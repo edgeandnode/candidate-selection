@@ -1,4 +1,5 @@
 pub mod criteria;
+pub mod decay;
 mod normalized;
 #[cfg(test)]
 mod test;
