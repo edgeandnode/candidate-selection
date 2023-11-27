@@ -1,6 +1,6 @@
 use ordered_float::NotNan;
 
-/// f64 values in the range [0, 1].
+/// A non-NaN f64 value in the range [0, 1].
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Normalized(NotNan<f64>);
 

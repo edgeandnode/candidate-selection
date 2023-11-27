@@ -1,3 +1,5 @@
+pub mod performance;
+
 use ordered_float::NotNan;
 
 use crate::Normalized;
@@ -25,6 +27,7 @@ where
     Normalized::new(score).unwrap()
 }
 
+/// A positive non-NaN f64 value
 #[derive(Clone, Copy)]
 pub struct Weight(NotNan<f64>);
 
