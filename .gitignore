@@ -1,2 +1,3 @@
+/proptest-regressions/
 /target/
 Cargo.lock
