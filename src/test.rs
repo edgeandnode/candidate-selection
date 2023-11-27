@@ -3,6 +3,24 @@ use rand::{rngs::SmallRng, SeedableRng as _};
 
 use crate::{select, ArrayVec, Candidate, Normalized};
 
+#[track_caller]
+pub fn assert_within(value: f64, expected: f64, tolerance: f64) {
+    let diff = (value - expected).abs();
+    assert!(
+        diff <= tolerance,
+        "Expected value of {expected} +- {tolerance} but got {value} which is off by {diff}",
+    );
+}
+
+#[track_caller]
+pub fn assert_within_normalized(value: Normalized, expected: f64, tolerance: f64) {
+    let diff = (*value.as_f64() - expected).abs();
+    assert!(
+        diff <= tolerance,
+        "Expected value of {expected} +- {tolerance} but got {value:?} which is off by {diff}",
+    );
+}
+
 #[derive(Debug)]
 struct TestCandidate {
     id: usize,
@@ -27,7 +45,7 @@ impl Candidate for TestCandidate {
 }
 
 prop_compose! {
-    fn normalized()(value in 0.0_f64..=1.0_f64) -> Normalized {
+    pub fn normalized()(value in 0.0_f64..=1.0_f64) -> Normalized {
         Normalized::new(value).unwrap()
     }
 }

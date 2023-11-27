@@ -114,8 +114,8 @@ pub fn expected_value_probabilities<const LIMIT: usize>(
 mod test {
     use arrayvec::ArrayVec;
 
-    use super::decay::assert_within;
     use super::Performance;
+    use crate::test::{assert_within, assert_within_normalized};
     use crate::Normalized;
 
     #[test]
@@ -144,9 +144,9 @@ mod test {
         let selections: ArrayVec<&Performance, 3> = candidates.iter().collect();
         let result: ArrayVec<Normalized, 3> = super::expected_value_probabilities(&selections);
 
-        assert_within(*result[0].as_f64(), 0.495, 1e-4);
-        assert_within(*result[1].as_f64(), 0.5, 1e-4);
-        assert_within(*result[2].as_f64(), 0.004, 1e-4);
+        assert_within_normalized(result[0], 0.495, 1e-4);
+        assert_within_normalized(result[1], 0.5, 1e-4);
+        assert_within_normalized(result[2], 0.004, 1e-4);
 
         let latencies: ArrayVec<u32, 3> = candidates.iter().map(|c| c.latency_ms()).collect();
         let expected_latency = latencies

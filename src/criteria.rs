@@ -1,4 +1,5 @@
 pub mod decay;
+pub mod fee;
 pub mod performance;
 
 use crate::{Normalized, Weight};

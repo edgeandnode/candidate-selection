@@ -133,22 +133,13 @@ macro_rules! impl_struct_decay {
 }
 
 #[cfg(test)]
-#[track_caller]
-pub fn assert_within(value: f64, expected: f64, tolerance: f64) {
-    let diff = (value - expected).abs();
-    assert!(
-        diff <= tolerance,
-        "Expected value of {expected} +- {tolerance} but got {value} which is off by {diff}",
-    );
-}
-
-#[cfg(test)]
 mod test {
     use std::iter;
 
     use arrayvec::ArrayVec;
 
     use super::*;
+    use crate::test::assert_within;
 
     struct Model<const F: usize, const D: u16>(Vec<f64>);
 
