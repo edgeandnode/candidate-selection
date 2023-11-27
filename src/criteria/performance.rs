@@ -4,6 +4,12 @@ use ordered_float::NotNan;
 use super::decay::{self, DecayBuffer};
 use crate::{impl_struct_decay, Normalized};
 
+/// https://www.desmos.com/calculator/v2vrfktlpl
+pub fn score_latency(latency_ms: u32) -> Normalized {
+    let sigmoid = |x: u32| 1.0 + std::f64::consts::E.powf(((x as f64) - 400.0) / 300.0);
+    Normalized::new(sigmoid(0) / sigmoid(latency_ms)).unwrap()
+}
+
 /// Tracks success rate & expected latency in milliseconds. For information decay to take effect,
 /// `decay` must be called periodically at 1 second intervals.
 pub struct Performance {
