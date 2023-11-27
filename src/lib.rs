@@ -1,6 +1,5 @@
 pub mod criteria;
-pub mod decay;
-mod normalized;
+mod num;
 #[cfg(test)]
 mod test;
 
@@ -9,7 +8,7 @@ use std::collections::BTreeMap;
 pub use arrayvec::ArrayVec;
 use rand::seq::SliceRandom as _;
 
-pub use crate::normalized::Normalized;
+pub use crate::num::{Normalized, Weight};
 
 pub trait Candidate {
     type Id: Eq + Ord;

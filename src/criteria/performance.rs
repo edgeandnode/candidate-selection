@@ -1,10 +1,8 @@
 use arrayvec::ArrayVec;
 use ordered_float::NotNan;
 
-use crate::{
-    decay::{self, DecayBuffer},
-    impl_struct_decay, Normalized,
-};
+use super::decay::{self, DecayBuffer};
+use crate::{impl_struct_decay, Normalized};
 
 /// Tracks success rate & expected latency in milliseconds. For information decay to take effect,
 /// `decay` must be called periodically at 1 second intervals.
@@ -116,8 +114,9 @@ pub fn expected_value_probabilities<const LIMIT: usize>(
 mod test {
     use arrayvec::ArrayVec;
 
+    use super::decay::assert_within;
     use super::Performance;
-    use crate::{decay::assert_within, Normalized};
+    use crate::Normalized;
 
     #[test]
     fn expected_value_probabilities_example() {

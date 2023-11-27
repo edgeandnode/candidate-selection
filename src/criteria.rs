@@ -1,8 +1,7 @@
+pub mod decay;
 pub mod performance;
 
-use ordered_float::NotNan;
-
-use crate::Normalized;
+use crate::{Normalized, Weight};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Alternative {
@@ -20,37 +19,8 @@ pub fn weighted_product_model<Alternatives>(alternatives: Alternatives) -> Norma
 where
     Alternatives: IntoIterator<Item = Alternative>,
 {
-    let score = alternatives
+    alternatives
         .into_iter()
-        .map(|Alternative { score, weight }| score.as_f64().powf(*weight.as_f64()))
-        .product();
-    Normalized::new(score).unwrap()
-}
-
-/// A positive non-NaN f64 value
-#[derive(Clone, Copy)]
-pub struct Weight(NotNan<f64>);
-
-impl Weight {
-    pub fn new(value: f64) -> Option<Self> {
-        let value = NotNan::new(value).ok()?;
-        if value.is_sign_negative() {
-            return None;
-        }
-        Some(Self(value))
-    }
-
-    pub fn as_f64(&self) -> NotNan<f64> {
-        self.0
-    }
-
-    pub fn is_zero(&self) -> bool {
-        self.0 == 0.0
-    }
-}
-
-impl std::fmt::Debug for Weight {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
+        .map(|Alternative { score, weight }| score.pow(weight))
+        .product()
 }
