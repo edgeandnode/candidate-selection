@@ -71,6 +71,8 @@ proptest! {
             .map(|s| s * min_score_cutoff)
             .unwrap_or(Normalized::ZERO);
 
+        let candidates: Vec<&TestCandidate> = candidates.iter().collect();
+
         let selections: ArrayVec<&TestCandidate, 1> = select(&mut rng, &candidates, min_score_cutoff);
         prop_assert_eq!(exists_acceptable_candidate, !selections.is_empty());
         prop_assert_eq!(true, selections.iter().all(|s| s.score > Normalized::ZERO));

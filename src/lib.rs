@@ -26,21 +26,20 @@ pub trait Candidate {
 ///
 /// If a candidate's score is below `min_score_cutoff` as a proportion of the max provider's
 /// individual score, then the provider will not be selected.
-pub fn select<'c, Rng, Candidate, Candidates, const LIMIT: usize>(
+pub fn select<'c, Rng, Candidate, const LIMIT: usize>(
     rng: &mut Rng,
-    candidates: Candidates,
+    candidates: &[&'c Candidate],
     min_score_cutoff: Normalized,
 ) -> ArrayVec<&'c Candidate, LIMIT>
 where
     Rng: rand::Rng,
     Candidate: crate::Candidate,
-    Candidates: IntoIterator<Item = &'c Candidate>,
 {
     assert!(LIMIT > 0);
     // Collect into a map to remove duplicate candidates.
     let candidates: BTreeMap<Candidate::Id, (&'c Candidate, Normalized)> = candidates
-        .into_iter()
-        .map(|candidate| {
+        .iter()
+        .map(|&candidate| {
             let score = Candidate::score(candidate);
             (candidate.id(), (candidate, score))
         })
