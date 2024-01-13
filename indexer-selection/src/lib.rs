@@ -1,6 +1,7 @@
 use candidate_selection::criteria::performance::Performance;
 use candidate_selection::{self, ArrayVec, Normalized};
 use std::collections::hash_map::DefaultHasher;
+use std::f64::consts::E;
 use std::hash::{Hash as _, Hasher as _};
 use thegraph::types::{Address, DeploymentId};
 
@@ -9,7 +10,7 @@ pub struct Candidate<'p> {
     deployment: DeploymentId,
     fee: Normalized,
     subgraph_versions_behind: u8,
-    seconds_behind: u64,
+    seconds_behind: u32,
     slashable_usd: u64,
     zero_allocation: bool,
     performance: &'p Performance,
@@ -68,20 +69,30 @@ pub fn score_fee(fee: Normalized) -> Normalized {
     Normalized::new(score.max(1e-18)).unwrap()
 }
 
+/// Avoid serving deployments at versions behind, unless newer versions have poor indexer support.
 fn score_subgraph_versions_behind(subgraph_versions_behind: u8) -> Normalized {
     Normalized::new(MIN_SCORE_CUTOFF.powi(subgraph_versions_behind as i32)).unwrap()
 }
 
-fn score_seconds_behind(seconds_behind: u64) -> Normalized {
-    todo!()
+/// https://www.desmos.com/calculator/wmgkasfvza
+fn score_seconds_behind(seconds_behind: u32) -> Normalized {
+    let x = seconds_behind.min(21600) as i32;
+    let a = 32;
+    Normalized::new(1.0 - E.powi(-a * x)).unwrap()
 }
 
+/// https://www.desmos.com/calculator/akqaa2gjrf
 fn score_slashable_usd(slashable_usd: u64) -> Normalized {
-    todo!()
+    let x = slashable_usd as f64;
+    let a = 2e-4;
+    Normalized::new(1.0 - E.powf(-a * x)).unwrap()
 }
 
+/// Allocations of zero indicate that an indexer wants lower selection priority.
 fn score_zero_allocation(zero_allocation: bool) -> Normalized {
-    todo!()
+    zero_allocation
+        .then(|| Normalized::new(0.8).unwrap())
+        .unwrap_or(Normalized::ZERO)
 }
 
 /// https://www.desmos.com/calculator/v2vrfktlpl
@@ -90,13 +101,17 @@ pub fn score_latency(latency_ms: u32) -> Normalized {
     Normalized::new(sigmoid(0) / sigmoid(latency_ms)).unwrap()
 }
 
+/// https://www.desmos.com/calculator/df2keku3ad
 fn score_success_rate(success_rate: Normalized) -> Normalized {
-    todo!()
+    Normalized::new(success_rate.as_f64().powi(7)).unwrap()
 }
 
 #[cfg(test)]
 mod test {
-    use crate::{score_fee, Normalized};
+    use crate::{
+        score_fee, score_seconds_behind, score_slashable_usd, score_subgraph_versions_behind,
+        score_success_rate, score_zero_allocation, Normalized,
+    };
     use candidate_selection::num::assert_within;
     use proptest::proptest;
 
@@ -120,6 +135,26 @@ mod test {
         #[test]
         fn fee_range(fee in Normalized::arbitrary()) {
             score_fee(fee);
+        }
+        #[test]
+        fn subgraph_versions_behind_range(subgraph_versions_behind: u8) {
+            score_subgraph_versions_behind(subgraph_versions_behind);
+        }
+        #[test]
+        fn seconds_behind_range(seconds_behind: u32) {
+            score_seconds_behind(seconds_behind);
+        }
+        #[test]
+        fn slashable_usd_range(slashable_usd: u64) {
+            score_slashable_usd(slashable_usd);
+        }
+        #[test]
+        fn success_rate_range(success_rate in Normalized::arbitrary()) {
+            score_success_rate(success_rate);
+        }
+        #[test]
+        fn zero_allocation_range(zero_allocation: bool) {
+            score_zero_allocation(zero_allocation);
         }
     }
 }
