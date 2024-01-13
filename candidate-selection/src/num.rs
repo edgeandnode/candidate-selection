@@ -1,4 +1,5 @@
 use ordered_float::NotNan;
+use proptest::strategy::Strategy;
 
 /// A non-NaN f64 value in the range [0, 1].
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -16,16 +17,20 @@ impl Normalized {
         Some(Self(value))
     }
 
-    pub fn as_f64(&self) -> NotNan<f64> {
+    pub fn as_inner(&self) -> NotNan<f64> {
         self.0
+    }
+
+    pub fn as_f64(&self) -> f64 {
+        self.0.into_inner()
     }
 
     pub fn is_zero(&self) -> bool {
         self == &Self::ZERO
     }
 
-    pub fn pow(&self, weight: Weight) -> Self {
-        Self::new(self.0.powf(*weight.0)).unwrap()
+    pub fn arbitrary() -> impl Strategy<Value = Normalized> {
+        (0.0..=1.0).prop_map(|n| Normalized::new(n).unwrap())
     }
 }
 
@@ -60,30 +65,11 @@ impl std::fmt::Debug for Normalized {
     }
 }
 
-/// A positive non-NaN f64 value
-#[derive(Clone, Copy)]
-pub struct Weight(NotNan<f64>);
-
-impl Weight {
-    pub fn new(value: f64) -> Option<Self> {
-        let value = NotNan::new(value).ok()?;
-        if value.is_sign_negative() {
-            return None;
-        }
-        Some(Self(value))
-    }
-
-    pub fn as_f64(&self) -> NotNan<f64> {
-        self.0
-    }
-
-    pub fn is_zero(&self) -> bool {
-        self.0 == 0.0
-    }
-}
-
-impl std::fmt::Debug for Weight {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
+#[track_caller]
+pub fn assert_within(value: f64, expected: f64, tolerance: f64) {
+    let diff = (value - expected).abs();
+    assert!(
+        diff <= tolerance,
+        "Expected value of {expected} +- {tolerance} but got {value} which is off by {diff}",
+    );
 }

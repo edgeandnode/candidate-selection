@@ -1,14 +1,4 @@
-[package]
-name = "candidate-selection"
-version = "0.1.0"
-edition = "2021"
+[workspace]
 
-[dependencies]
-arrayvec = "0.7.4"
-ordered-float = { version = "4.1.1", default-features = false }
-permutation = "0.4.1"
-rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
-
-[dev-dependencies]
-proptest = "1.4.0"
-rand = { version = "0.8.5", default-features = true, features = ["small_rng"] }
+resolver = "2"
+members = ["candidate-selection", "indexer-selection"]

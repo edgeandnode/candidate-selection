@@ -1,14 +1,12 @@
 pub mod criteria;
-mod num;
+pub mod num;
 #[cfg(test)]
 mod test;
 
-use std::collections::BTreeMap;
-
+pub use crate::num::Normalized;
 pub use arrayvec::ArrayVec;
 use rand::seq::SliceRandom as _;
-
-pub use crate::num::{Normalized, Weight};
+use std::collections::BTreeMap;
 
 pub trait Candidate {
     type Id: Eq + Ord;
@@ -28,7 +26,7 @@ pub trait Candidate {
 /// individual score, then the provider will not be selected.
 pub fn select<'c, Rng, Candidate, const LIMIT: usize>(
     rng: &mut Rng,
-    candidates: &[&'c Candidate],
+    candidates: &'c [Candidate],
     min_score_cutoff: Normalized,
 ) -> ArrayVec<&'c Candidate, LIMIT>
 where
@@ -37,9 +35,9 @@ where
 {
     assert!(LIMIT > 0);
     // Collect into a map to remove duplicate candidates.
-    let candidates: BTreeMap<Candidate::Id, (&'c Candidate, Normalized)> = candidates
+    let candidates: BTreeMap<Candidate::Id, (&Candidate, Normalized)> = candidates
         .iter()
-        .map(|&candidate| {
+        .map(|candidate| {
             let score = Candidate::score(candidate);
             (candidate.id(), (candidate, score))
         })
@@ -51,7 +49,7 @@ where
     let max_score = *candidates.values().map(|(_, score)| score).max().unwrap();
     let cutoff_score = max_score * min_score_cutoff;
     // Collect into a vec because `choose_weighted` requires a slice to pick from.
-    let mut candidates: Vec<(&'c Candidate, Normalized)> = candidates
+    let mut candidates: Vec<(&Candidate, Normalized)> = candidates
         .into_iter()
         .filter(|(_, (_, score))| *score >= cutoff_score)
         .map(|(_, (candidate, score))| (candidate, score))
@@ -59,9 +57,9 @@ where
     // At this point we have reduced the candidates to those with a nonzero score above the cutoff.
 
     let (first_selection, combined_score) = *candidates
-        .choose_weighted(rng, |(_, score)| *score.as_f64())
+        .choose_weighted(rng, |(_, score)| score.as_f64())
         .unwrap();
-    let mut selections: ArrayVec<&'c Candidate, LIMIT> = Default::default();
+    let mut selections: ArrayVec<&Candidate, LIMIT> = Default::default();
     selections.push(first_selection);
     candidates.retain(|(candidate, _)| candidate.id() != first_selection.id());
 
@@ -72,7 +70,7 @@ where
             break;
         }
         let (picked, _) = *candidates
-            .choose_weighted(rng, |(_, score)| *score.as_f64())
+            .choose_weighted(rng, |(_, score)| score.as_f64())
             .unwrap();
         selections.push(picked);
         if Candidate::score_many(&selections) > combined_score {

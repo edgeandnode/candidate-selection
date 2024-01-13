@@ -134,12 +134,10 @@ macro_rules! impl_struct_decay {
 
 #[cfg(test)]
 mod test {
-    use std::iter;
-
-    use arrayvec::ArrayVec;
-
     use super::*;
-    use crate::test::assert_within;
+    use crate::num::assert_within;
+    use arrayvec::ArrayVec;
+    use std::iter;
 
     struct Model<const F: usize, const D: u16>(Vec<f64>);
 
