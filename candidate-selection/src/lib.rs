@@ -12,7 +12,7 @@ pub trait Candidate {
     type Id: Eq + Ord;
     fn id(&self) -> Self::Id;
     fn score(&self) -> Normalized;
-    fn score_many(candidates: &[&Self]) -> Normalized;
+    fn score_many<const LIMIT: usize>(candidates: &[&Self]) -> Normalized;
 }
 
 /// Perform a random selection of up to `LIMIT` of the provided candidates. Candidates are picked
@@ -73,7 +73,7 @@ where
             .choose_weighted(rng, |(_, score)| score.as_f64())
             .unwrap();
         selections.push(picked);
-        if Candidate::score_many(&selections) > combined_score {
+        if Candidate::score_many::<LIMIT>(&selections) > combined_score {
             candidates.retain(|(candidate, _)| candidate.id() != picked.id());
         } else {
             selections.pop();

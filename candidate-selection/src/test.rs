@@ -16,7 +16,7 @@ impl Candidate for TestCandidate {
     fn score(&self) -> Normalized {
         self.score
     }
-    fn score_many(candidates: &[&Self]) -> Normalized {
+    fn score_many<const LIMIT: usize>(candidates: &[&Self]) -> Normalized {
         let mut combined_score = 0.0;
         for candidate in candidates {
             combined_score = (combined_score + candidate.score.as_f64()).min(1.0);

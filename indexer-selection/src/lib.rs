@@ -1,4 +1,4 @@
-use candidate_selection::criteria::performance::Performance;
+use candidate_selection::criteria::performance::{expected_value_probabilities, Performance};
 use candidate_selection::{self, ArrayVec, Normalized};
 use std::collections::hash_map::DefaultHasher;
 use std::f64::consts::E;
@@ -52,8 +52,62 @@ impl<'p> candidate_selection::Candidate for Candidate<'p> {
         .product()
     }
 
-    fn score_many(candidates: &[&Self]) -> Normalized {
-        todo!()
+    fn score_many<const LIMIT: usize>(candidates: &[&Self]) -> Normalized {
+        let fee = candidates.iter().map(|c| c.fee.as_f64()).sum::<f64>();
+        let fee = match Normalized::new(fee) {
+            Some(fee) => fee,
+            None => return Normalized::ZERO,
+        };
+
+        let selections: ArrayVec<&Performance, LIMIT> =
+            candidates.iter().map(|c| c.performance).collect();
+        let p = expected_value_probabilities::<LIMIT>(&selections);
+
+        let success_rate = Normalized::new(p.iter().map(|p| p.as_f64()).sum()).unwrap();
+        let latency = candidates
+            .iter()
+            .map(|c| c.performance.latency_ms() as f64)
+            .zip(&p)
+            .map(|(x, p)| x.recip() * p.as_f64())
+            .sum::<f64>()
+            .recip() as u32;
+        let subgraph_versions_behind = candidates
+            .iter()
+            .map(|c| c.subgraph_versions_behind)
+            .zip(&p)
+            .map(|(x, p)| x as f64 * p.as_f64())
+            .sum::<f64>() as u8;
+        let seconds_behind = candidates
+            .iter()
+            .map(|c| c.seconds_behind)
+            .zip(&p)
+            .map(|(x, p)| x as f64 * p.as_f64())
+            .sum::<f64>() as u32;
+        let slashable_usd = candidates
+            .iter()
+            .map(|c| c.slashable_usd)
+            .zip(&p)
+            .map(|(x, p)| x as f64 * p.as_f64())
+            .sum::<f64>() as u64;
+        let p_zero_allocation = candidates
+            .iter()
+            .map(|c| c.zero_allocation)
+            .zip(&p)
+            .map(|(x, p)| x as u8 as f64 * p.as_f64())
+            .sum::<f64>()
+            > 0.5;
+
+        [
+            score_fee(fee),
+            score_subgraph_versions_behind(subgraph_versions_behind),
+            score_seconds_behind(seconds_behind),
+            score_slashable_usd(slashable_usd),
+            score_zero_allocation(p_zero_allocation),
+            score_latency(latency),
+            score_success_rate(success_rate),
+        ]
+        .into_iter()
+        .product()
     }
 }
 
