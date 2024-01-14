@@ -10,3 +10,4 @@ thegraph = { git = "https://github.com/edgeandnode/toolshed", tag = "thegraph-v0
 
 [dev-dependencies]
 proptest = "1.4.0"
+rand = { version = "0.8.5", default-features = true, features = ["small_rng"] }

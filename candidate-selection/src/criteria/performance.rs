@@ -2,6 +2,7 @@ use super::decay::{self, DecayBuffer};
 use crate::{impl_struct_decay, Normalized};
 use arrayvec::ArrayVec;
 use ordered_float::NotNan;
+use std::fmt::Debug;
 
 /// Tracks success rate & expected latency in milliseconds. For information decay to take effect,
 /// `decay` must be called periodically at 1 second intervals.
@@ -20,6 +21,22 @@ impl_struct_decay!(Frame {
     total_latency_ms,
     response_count
 });
+
+impl Debug for Performance {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let dbg_frame = |f: &Frame| -> f64 { f.total_latency_ms / f.response_count.max(1.0) };
+        f.debug_struct("Performance")
+            .field(
+                "latency_success",
+                &self.latency_success.map(dbg_frame).collect::<Vec<f64>>(),
+            )
+            .field(
+                "latency_failure",
+                &self.latency_failure.map(dbg_frame).collect::<Vec<f64>>(),
+            )
+            .finish()
+    }
+}
 
 impl Performance {
     #[allow(clippy::new_without_default)]

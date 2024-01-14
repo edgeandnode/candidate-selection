@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod test;
+
 use candidate_selection::criteria::performance::{expected_value_probabilities, Performance};
 use candidate_selection::{self, ArrayVec, Normalized};
 use std::collections::hash_map::DefaultHasher;
@@ -5,15 +8,16 @@ use std::f64::consts::E;
 use std::hash::{Hash as _, Hasher as _};
 use thegraph::types::{Address, DeploymentId};
 
+#[derive(Debug)]
 pub struct Candidate<'p> {
-    indexer: Address,
-    deployment: DeploymentId,
-    fee: Normalized,
-    subgraph_versions_behind: u8,
-    seconds_behind: u32,
-    slashable_usd: u64,
-    zero_allocation: bool,
-    performance: &'p Performance,
+    pub indexer: Address,
+    pub deployment: DeploymentId,
+    pub fee: Normalized,
+    pub subgraph_versions_behind: u8,
+    pub seconds_behind: u16,
+    pub slashable_usd: u64,
+    pub zero_allocation: bool,
+    pub performance: &'p Performance,
 }
 
 const MIN_SCORE_CUTOFF: f64 = 0.25;
@@ -82,7 +86,7 @@ impl<'p> candidate_selection::Candidate for Candidate<'p> {
             .map(|c| c.seconds_behind)
             .zip(&p)
             .map(|(x, p)| x as f64 * p.as_f64())
-            .sum::<f64>() as u32;
+            .sum::<f64>() as u16;
         let slashable_usd = candidates
             .iter()
             .map(|c| c.slashable_usd)
@@ -129,8 +133,8 @@ fn score_subgraph_versions_behind(subgraph_versions_behind: u8) -> Normalized {
 }
 
 /// https://www.desmos.com/calculator/wmgkasfvza
-fn score_seconds_behind(seconds_behind: u32) -> Normalized {
-    let x = seconds_behind.min(21600) as i32;
+fn score_seconds_behind(seconds_behind: u16) -> Normalized {
+    let x = seconds_behind as i32;
     let a = 32;
     Normalized::new(1.0 - E.powi(-a * x)).unwrap()
 }
@@ -158,57 +162,4 @@ pub fn score_latency(latency_ms: u32) -> Normalized {
 /// https://www.desmos.com/calculator/df2keku3ad
 fn score_success_rate(success_rate: Normalized) -> Normalized {
     Normalized::new(success_rate.as_f64().powi(7)).unwrap()
-}
-
-#[cfg(test)]
-mod test {
-    use crate::{
-        score_fee, score_seconds_behind, score_slashable_usd, score_subgraph_versions_behind,
-        score_success_rate, score_zero_allocation, Normalized,
-    };
-    use candidate_selection::num::assert_within;
-    use proptest::proptest;
-
-    #[test]
-    fn fee_limits() {
-        assert_within(score_fee(Normalized::ZERO).as_f64(), 1.0, 1e-12);
-        assert_within(
-            score_fee(Normalized::new(1e-18).unwrap()).as_f64(),
-            1.0,
-            1e-12,
-        );
-        assert_within(score_fee(Normalized::ONE).as_f64(), 0.0, 1e-12);
-        assert_within(
-            score_fee(Normalized::new(1.0 - 1e-18).unwrap()).as_f64(),
-            0.0,
-            1e-12,
-        );
-    }
-
-    proptest! {
-        #[test]
-        fn fee_range(fee in Normalized::arbitrary()) {
-            score_fee(fee);
-        }
-        #[test]
-        fn subgraph_versions_behind_range(subgraph_versions_behind: u8) {
-            score_subgraph_versions_behind(subgraph_versions_behind);
-        }
-        #[test]
-        fn seconds_behind_range(seconds_behind: u32) {
-            score_seconds_behind(seconds_behind);
-        }
-        #[test]
-        fn slashable_usd_range(slashable_usd: u64) {
-            score_slashable_usd(slashable_usd);
-        }
-        #[test]
-        fn success_rate_range(success_rate in Normalized::arbitrary()) {
-            score_success_rate(success_rate);
-        }
-        #[test]
-        fn zero_allocation_range(zero_allocation: bool) {
-            score_zero_allocation(zero_allocation);
-        }
-    }
 }
