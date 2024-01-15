@@ -134,9 +134,7 @@ fn score_subgraph_versions_behind(subgraph_versions_behind: u8) -> Normalized {
 
 /// https://www.desmos.com/calculator/wmgkasfvza
 fn score_seconds_behind(seconds_behind: u16) -> Normalized {
-    let x = seconds_behind as i32;
-    let a = 32;
-    Normalized::new(1.0 - E.powi(-a * x)).unwrap()
+    Normalized::new(1.0 - E.powf(-32.0 / seconds_behind.max(1) as f64)).unwrap()
 }
 
 /// https://www.desmos.com/calculator/akqaa2gjrf
