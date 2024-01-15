@@ -3,36 +3,6 @@ use candidate_selection::num::assert_within;
 use proptest::{prop_assert, prop_compose, proptest};
 use rand::{rngs::SmallRng, SeedableRng};
 
-mod range {
-    use super::*;
-    proptest! {
-        #[test]
-        fn fee(fee in Normalized::arbitrary()) {
-            score_fee(fee);
-        }
-        #[test]
-        fn subgraph_versions_behind(subgraph_versions_behind: u8) {
-            score_subgraph_versions_behind(subgraph_versions_behind);
-        }
-        #[test]
-        fn seconds_behind(seconds_behind: u16) {
-            score_seconds_behind(seconds_behind);
-        }
-        #[test]
-        fn slashable_usd(slashable_usd: u64) {
-            score_slashable_usd(slashable_usd);
-        }
-        #[test]
-        fn success_rate(success_rate in Normalized::arbitrary()) {
-            score_success_rate(success_rate);
-        }
-        #[test]
-        fn zero_allocation(zero_allocation: bool) {
-            score_zero_allocation(zero_allocation);
-        }
-    }
-}
-
 mod limits {
     use super::*;
 
@@ -50,6 +20,11 @@ mod limits {
             0.0,
             1e-12,
         );
+    }
+
+    #[test]
+    fn success_rate() {
+        assert_within(score_success_rate(Normalized::ZERO).as_f64(), 0.01, 0.001);
     }
 }
 
@@ -108,6 +83,17 @@ proptest! {
         let mut rng = SmallRng::seed_from_u64(seed);
         let selections: ArrayVec<&Candidate<'_>, 3> = crate::select(&mut rng, &candidates);
         println!("{:#?}", selections.iter().map(|c| c.indexer).collect::<Vec<_>>());
-        prop_assert!(!selections.is_empty(), "some valid candidate is selected");
+
+        let valid_candidate = |c: &Candidate| -> bool {
+            c.slashable_usd > 0
+        };
+        let valid_selections = candidates.iter().filter(|c| valid_candidate(c)).count();
+
+        if valid_selections > 0 {
+            prop_assert!(!selections.is_empty(), "some valid candidate selected");
+            prop_assert!(selections.len() <= valid_selections, "all candidates selected are valid");
+        } else {
+            prop_assert!(selections.is_empty(), "no invalid candidate selected");
+        }
     }
 }

@@ -148,7 +148,7 @@ fn score_slashable_usd(slashable_usd: u64) -> Normalized {
 fn score_zero_allocation(zero_allocation: bool) -> Normalized {
     zero_allocation
         .then(|| Normalized::new(0.8).unwrap())
-        .unwrap_or(Normalized::ZERO)
+        .unwrap_or(Normalized::ONE)
 }
 
 /// https://www.desmos.com/calculator/v2vrfktlpl
@@ -159,5 +159,5 @@ pub fn score_latency(latency_ms: u32) -> Normalized {
 
 /// https://www.desmos.com/calculator/df2keku3ad
 fn score_success_rate(success_rate: Normalized) -> Normalized {
-    Normalized::new(success_rate.as_f64().powi(7)).unwrap()
+    Normalized::new(success_rate.as_f64().powi(7).max(0.01)).unwrap()
 }
