@@ -1,4 +1,4 @@
 [workspace]
 
 resolver = "2"
-members = ["candidate-selection", "indexer-selection"]
+members = ["candidate-selection", "indexer-selection", "simulator"]

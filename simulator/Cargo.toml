@@ -1,0 +1,10 @@
+[package]
+name = "simulator"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+candidate-selection = { path = "../candidate-selection" }
+indexer-selection = { path = "../indexer-selection" }
+rand = { version = "0.8.5", default-features = true, features = ["small_rng"] }
+thegraph = { git = "https://github.com/edgeandnode/toolshed", tag = "thegraph-v0.2.0" }
