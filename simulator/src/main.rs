@@ -1,22 +1,24 @@
-use candidate_selection::{criteria::performance::Performance, Normalized};
-use indexer_selection::Candidate;
+use candidate_selection::{
+    criteria::performance::Performance, num::assert_within, ArrayVec, Normalized,
+};
+use indexer_selection::{select, Candidate};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
-use std::io::stdin;
+use std::{collections::BTreeMap, io::stdin, time::Instant};
 use thegraph::types::Address;
 
-pub struct IndexerCharacteristics {
-    pub address: Address,
-    pub fee: f64,
-    pub seconds_behind: u16,
-    pub latency_ms: u32,
-    pub success_rate: Normalized,
-    pub slashable_usd: u64,
-    pub zero_allocation: bool,
+struct IndexerCharacteristics {
+    address: Address,
+    fee_usd: f64,
+    seconds_behind: u16,
+    latency_ms: u32,
+    success_rate: Normalized,
+    slashable_usd: u64,
+    zero_allocation: bool,
 }
 
 fn main() {
     let header =
-        "address,fee_grt,seconds_behind,latency_ms,success_rate,slashable_stake_grt,allocation_grt";
+        "address,fee_usd,seconds_behind,latency_ms,success_rate,slashable_usd,zero_allocation";
     let characteristics: Vec<IndexerCharacteristics> = stdin()
         .lines()
         .filter_map(|line| {
@@ -27,7 +29,7 @@ fn main() {
             let fields = line.split(',').collect::<Vec<&str>>();
             Some(IndexerCharacteristics {
                 address: fields[0].parse().expect("address"),
-                fee: fields[1].parse().expect("fee"),
+                fee_usd: fields[1].parse().expect("fee_usd"),
                 seconds_behind: fields[2].parse().expect("seconds_behind"),
                 latency_ms: fields[3].parse().expect("latency_ms"),
                 success_rate: fields[4]
@@ -42,26 +44,111 @@ fn main() {
         .collect();
 
     let mut rng = SmallRng::from_entropy();
-    let budget = 20e-6;
-    let candidates: Vec<Candidate> = characteristics
-        .into_iter()
+
+    let mut perf: BTreeMap<Address, Performance> = characteristics
+        .iter()
         .map(|c| {
-            let mut performance = Performance::new();
-            for _ in 0..1000 {
-                performance.feedback(rng.gen_bool(c.success_rate.as_f64()), c.latency_ms);
+            let mut perf = Performance::new();
+            for _ in 0..10000 {
+                perf.feedback(rng.gen_bool(c.success_rate.as_f64()), c.latency_ms);
             }
-            Candidate {
+            assert_within(perf.latency_ms() as f64, c.latency_ms as f64, 1.0);
+            assert_within(perf.success_rate().as_f64(), c.success_rate.as_f64(), 0.01);
+            (c.address, perf)
+        })
+        .collect();
+
+    let total_client_queries = 10_000;
+    let mut total_selection_μs = 0;
+    let mut total_latency_ms: u64 = 0;
+    let mut total_successes: u64 = 0;
+    let mut total_seconds_behind: u64 = 0;
+    let mut total_fees_usd = 0.0;
+
+    let budget = 20e-6;
+    let client_queries_per_second = 100;
+    for client_query_index in 0..total_client_queries {
+        if (client_query_index % client_queries_per_second) == 0 {
+            for p in perf.values_mut() {
+                p.decay();
+            }
+        }
+
+        let candidates: Vec<Candidate> = characteristics
+            .iter()
+            .map(|c| Candidate {
                 indexer: c.address,
                 deployment: [0; 32].into(),
-                fee: Normalized::new(c.fee / budget).expect("invalid fee or budget"),
+                fee: Normalized::new(c.fee_usd / budget).expect("invalid fee or budget"),
                 subgraph_versions_behind: 0,
                 seconds_behind: c.seconds_behind,
                 slashable_usd: c.slashable_usd,
                 zero_allocation: c.zero_allocation,
-                performance: Box::leak(Box::new(performance)),
-            }
-        })
-        .collect();
+                performance: perf.get(&c.address).unwrap(),
+            })
+            .collect();
 
-    todo!();
+        let t0 = Instant::now();
+        let selections: ArrayVec<&Candidate, 3> = select(&mut rng, &candidates);
+        total_selection_μs += Instant::now().duration_since(t0).as_micros();
+        total_fees_usd += selections
+            .iter()
+            .map(|c| c.fee.as_f64() * budget)
+            .sum::<f64>();
+
+        struct IndexerOutcome {
+            indexer: Address,
+            latency_ms: u32,
+            success: bool,
+            seconds_behind: u16,
+        }
+        let mut indexer_query_outcomes: ArrayVec<IndexerOutcome, 3> = selections
+            .iter()
+            .map(|c| IndexerOutcome {
+                indexer: c.indexer,
+                latency_ms: c.performance.latency_ms(),
+                success: rng.gen_bool(c.performance.success_rate().as_f64()),
+                seconds_behind: c.seconds_behind,
+            })
+            .collect();
+        indexer_query_outcomes.sort_unstable_by_key(|o| o.success.then(|| o.latency_ms));
+        let client_outcome = indexer_query_outcomes
+            .iter()
+            .find_map(|o| o.success.then(|| o));
+
+        total_successes += client_outcome.is_some() as u64;
+        total_latency_ms += client_outcome.map(|o| o.latency_ms).unwrap_or_else(|| {
+            selections
+                .iter()
+                .map(|c| c.performance.latency_ms())
+                .max()
+                .unwrap_or(0)
+        }) as u64;
+        total_seconds_behind += client_outcome.map(|o| o.seconds_behind).unwrap_or(0) as u64;
+
+        drop(selections);
+        for outcome in indexer_query_outcomes {
+            perf.get_mut(&outcome.indexer)
+                .unwrap()
+                .feedback(outcome.success, outcome.latency_ms);
+        }
+    }
+
+    println!(
+        "avg_selection_μs: {}",
+        total_selection_μs as f64 / total_client_queries as f64
+    );
+    println!(
+        "success_rate: {:.4}",
+        total_successes as f64 / total_client_queries as f64
+    );
+    println!(
+        "avg_latency_ms: {:.2}",
+        total_latency_ms as f64 / total_client_queries as f64
+    );
+    println!(
+        "total_seconds_behind: {:.2}",
+        total_seconds_behind as f64 / total_client_queries as f64
+    );
+    println!("total_fees_usd: {:.2}", total_fees_usd);
 }
