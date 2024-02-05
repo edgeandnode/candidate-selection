@@ -6,6 +6,7 @@ use std::fmt::Debug;
 
 /// Tracks success rate & expected latency in milliseconds. For information decay to take effect,
 /// `decay` must be called periodically at 1 second intervals.
+#[derive(Default)]
 pub struct Performance {
     latency_success: DecayBuffer<Frame, 7, 4>,
     latency_failure: DecayBuffer<Frame, 7, 4>,
@@ -39,14 +40,6 @@ impl Debug for Performance {
 }
 
 impl Performance {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Self {
-            latency_success: Default::default(),
-            latency_failure: Default::default(),
-        }
-    }
-
     pub fn decay(&mut self) {
         self.latency_success.decay();
         self.latency_failure.decay();
@@ -134,7 +127,7 @@ mod test {
 
     #[test]
     fn expected_value_probabilities_example() {
-        let mut candidates = [Performance::new(), Performance::new(), Performance::new()];
+        let mut candidates: [Performance; 3] = Default::default();
 
         for _ in 0..99 {
             candidates[0].feedback(true, 50);

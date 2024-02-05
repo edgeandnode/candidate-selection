@@ -48,7 +48,7 @@ fn main() {
     let mut perf: BTreeMap<Address, Performance> = characteristics
         .iter()
         .map(|c| {
-            let mut perf = Performance::new();
+            let mut perf = Performance::default();
             for _ in 0..10000 {
                 perf.feedback(rng.gen_bool(c.success_rate.as_f64()), c.latency_ms);
             }

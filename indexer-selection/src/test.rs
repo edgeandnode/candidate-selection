@@ -53,7 +53,7 @@ prop_compose! {
         let mut deployment_bytes = [0; 32];
         deployment_bytes[0] = subgraph_versions_behind;
 
-        let mut performance = Performance::new();
+        let mut performance = Performance::default();
         for _ in 0..avg_success_rate_percent {
             performance.feedback(true, avg_latency_ms as u32);
         }
