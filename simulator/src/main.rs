@@ -111,10 +111,8 @@ fn main() {
                 seconds_behind: c.seconds_behind,
             })
             .collect();
-        indexer_query_outcomes.sort_unstable_by_key(|o| o.success.then(|| o.latency_ms));
-        let client_outcome = indexer_query_outcomes
-            .iter()
-            .find_map(|o| o.success.then(|| o));
+        indexer_query_outcomes.sort_unstable_by_key(|o| o.success.then_some(o.latency_ms));
+        let client_outcome = indexer_query_outcomes.iter().find(|o| o.success);
 
         total_successes += client_outcome.is_some() as u64;
         total_latency_ms += client_outcome.map(|o| o.latency_ms).unwrap_or_else(|| {
