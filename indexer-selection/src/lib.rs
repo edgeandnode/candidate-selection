@@ -2,38 +2,40 @@
 mod test;
 
 use candidate_selection::criteria::performance::expected_value_probabilities;
-pub use candidate_selection::criteria::performance::Performance;
-use candidate_selection::{self, ArrayVec, Normalized};
+pub use candidate_selection::criteria::performance::{ExpectedPerformance, Performance};
+pub use candidate_selection::{ArrayVec, Normalized};
 use std::collections::hash_map::DefaultHasher;
 use std::f64::consts::E;
 use std::hash::{Hash as _, Hasher as _};
 use thegraph::types::{Address, DeploymentId};
+use toolshed::url::Url;
 
 #[derive(Debug)]
-pub struct Candidate<'p> {
+pub struct Candidate {
     pub indexer: Address,
     pub deployment: DeploymentId,
+    pub url: Url,
+    pub perf: ExpectedPerformance,
     pub fee: Normalized,
-    pub subgraph_versions_behind: u8,
-    pub seconds_behind: u16,
+    pub seconds_behind: u32,
     pub slashable_usd: u64,
+    pub subgraph_versions_behind: u8,
     pub zero_allocation: bool,
-    pub performance: &'p Performance,
 }
 
 const MIN_SCORE_CUTOFF: f64 = 0.25;
 
 pub fn select<'c, Rng, const LIMIT: usize>(
     rng: &mut Rng,
-    candidates: &'c [Candidate<'c>],
-) -> ArrayVec<&'c Candidate<'c>, LIMIT>
+    candidates: &'c [Candidate],
+) -> ArrayVec<&'c Candidate, LIMIT>
 where
     Rng: rand::Rng,
 {
     candidate_selection::select(rng, candidates, Normalized::new(MIN_SCORE_CUTOFF).unwrap())
 }
 
-impl<'p> candidate_selection::Candidate for Candidate<'p> {
+impl candidate_selection::Candidate for Candidate {
     type Id = u64;
 
     fn id(&self) -> Self::Id {
@@ -45,13 +47,13 @@ impl<'p> candidate_selection::Candidate for Candidate<'p> {
 
     fn score(&self) -> Normalized {
         [
+            score_success_rate(self.perf.success_rate),
+            score_latency(self.perf.latency_ms()),
             score_fee(self.fee),
-            score_subgraph_versions_behind(self.subgraph_versions_behind),
             score_seconds_behind(self.seconds_behind),
             score_slashable_usd(self.slashable_usd),
+            score_subgraph_versions_behind(self.subgraph_versions_behind),
             score_zero_allocation(self.zero_allocation),
-            score_latency(self.performance.latency_ms()),
-            score_success_rate(self.performance.success_rate()),
         ]
         .into_iter()
         .product()
@@ -64,14 +66,14 @@ impl<'p> candidate_selection::Candidate for Candidate<'p> {
             None => return Normalized::ZERO,
         };
 
-        let selections: ArrayVec<&Performance, LIMIT> =
-            candidates.iter().map(|c| c.performance).collect();
-        let p = expected_value_probabilities::<LIMIT>(&selections);
+        let perf: ArrayVec<ExpectedPerformance, LIMIT> =
+            candidates.iter().map(|c| c.perf).collect();
+        let p = expected_value_probabilities::<LIMIT>(&perf);
 
         let success_rate = Normalized::new(p.iter().map(|p| p.as_f64()).sum()).unwrap();
         let latency = candidates
             .iter()
-            .map(|c| c.performance.latency_ms() as f64)
+            .map(|c| c.perf.latency_ms() as f64)
             .zip(&p)
             .map(|(x, p)| x.recip() * p.as_f64())
             .sum::<f64>()
@@ -87,7 +89,7 @@ impl<'p> candidate_selection::Candidate for Candidate<'p> {
             .map(|c| c.seconds_behind)
             .zip(&p)
             .map(|(x, p)| x as f64 * p.as_f64())
-            .sum::<f64>() as u16;
+            .sum::<f64>() as u32;
         let slashable_usd = candidates
             .iter()
             .map(|c| c.slashable_usd)
@@ -103,13 +105,13 @@ impl<'p> candidate_selection::Candidate for Candidate<'p> {
             > 0.5;
 
         [
+            score_success_rate(success_rate),
+            score_latency(latency),
             score_fee(fee),
-            score_subgraph_versions_behind(subgraph_versions_behind),
             score_seconds_behind(seconds_behind),
             score_slashable_usd(slashable_usd),
+            score_subgraph_versions_behind(subgraph_versions_behind),
             score_zero_allocation(p_zero_allocation),
-            score_latency(latency),
-            score_success_rate(success_rate),
         ]
         .into_iter()
         .product()
@@ -134,7 +136,7 @@ fn score_subgraph_versions_behind(subgraph_versions_behind: u8) -> Normalized {
 }
 
 /// https://www.desmos.com/calculator/wmgkasfvza
-fn score_seconds_behind(seconds_behind: u16) -> Normalized {
+fn score_seconds_behind(seconds_behind: u32) -> Normalized {
     Normalized::new(1.0 - E.powf(-32.0 / seconds_behind.max(1) as f64)).unwrap()
 }
 

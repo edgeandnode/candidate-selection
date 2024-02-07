@@ -8,10 +8,10 @@ use thegraph::types::Address;
 
 struct IndexerCharacteristics {
     address: Address,
-    fee_usd: f64,
-    seconds_behind: u16,
-    latency_ms: u32,
     success_rate: Normalized,
+    latency_ms: u32,
+    fee_usd: f64,
+    seconds_behind: u32,
     slashable_usd: u64,
     zero_allocation: bool,
 }
@@ -52,8 +52,13 @@ fn main() {
             for _ in 0..10000 {
                 perf.feedback(rng.gen_bool(c.success_rate.as_f64()), c.latency_ms);
             }
-            assert_within(perf.latency_ms() as f64, c.latency_ms as f64, 1.0);
-            assert_within(perf.success_rate().as_f64(), c.success_rate.as_f64(), 0.01);
+            let expected = perf.expected_performance();
+            assert_within(expected.latency_ms() as f64, c.latency_ms as f64, 1.0);
+            assert_within(
+                expected.success_rate.as_f64(),
+                c.success_rate.as_f64(),
+                0.01,
+            );
             (c.address, perf)
         })
         .collect();
@@ -79,12 +84,13 @@ fn main() {
             .map(|c| Candidate {
                 indexer: c.address,
                 deployment: [0; 32].into(),
+                url: "https://example.com".parse().unwrap(),
+                perf: perf.get(&c.address).unwrap().expected_performance(),
                 fee: Normalized::new(c.fee_usd / budget).expect("invalid fee or budget"),
-                subgraph_versions_behind: 0,
                 seconds_behind: c.seconds_behind,
                 slashable_usd: c.slashable_usd,
+                subgraph_versions_behind: 0,
                 zero_allocation: c.zero_allocation,
-                performance: perf.get(&c.address).unwrap(),
             })
             .collect();
 
@@ -100,14 +106,14 @@ fn main() {
             indexer: Address,
             latency_ms: u32,
             success: bool,
-            seconds_behind: u16,
+            seconds_behind: u32,
         }
         let mut indexer_query_outcomes: ArrayVec<IndexerOutcome, 3> = selections
             .iter()
             .map(|c| IndexerOutcome {
                 indexer: c.indexer,
-                latency_ms: c.performance.latency_ms(),
-                success: rng.gen_bool(c.performance.success_rate().as_f64()),
+                latency_ms: c.perf.latency_ms(),
+                success: rng.gen_bool(c.perf.success_rate.as_f64()),
                 seconds_behind: c.seconds_behind,
             })
             .collect();
@@ -118,7 +124,7 @@ fn main() {
         total_latency_ms += client_outcome.map(|o| o.latency_ms).unwrap_or_else(|| {
             selections
                 .iter()
-                .map(|c| c.performance.latency_ms())
+                .map(|c| c.perf.latency_ms())
                 .max()
                 .unwrap_or(0)
         }) as u64;

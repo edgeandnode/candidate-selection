@@ -4,6 +4,20 @@ use arrayvec::ArrayVec;
 use ordered_float::NotNan;
 use std::fmt::Debug;
 
+#[derive(Clone, Copy, Debug)]
+pub struct ExpectedPerformance {
+    pub success_rate: Normalized,
+    pub latency_success_ms: u32,
+    pub latency_failure_ms: u32,
+}
+
+impl ExpectedPerformance {
+    pub fn latency_ms(&self) -> u32 {
+        let p = self.success_rate.as_f64();
+        ((p * self.latency_success_ms as f64) + ((1.0 - p) * self.latency_failure_ms as f64)) as u32
+    }
+}
+
 /// Tracks success rate & expected latency in milliseconds. For information decay to take effect,
 /// `decay` must be called periodically at 1 second intervals.
 #[derive(Default)]
@@ -55,16 +69,19 @@ impl Performance {
         data_set.response_count += 1.0;
     }
 
-    pub fn success_rate(&self) -> Normalized {
+    pub fn expected_performance(&self) -> ExpectedPerformance {
+        ExpectedPerformance {
+            success_rate: self.success_rate(),
+            latency_success_ms: *self.latency_success() as u32,
+            latency_failure_ms: *self.latency_failure() as u32,
+        }
+    }
+
+    fn success_rate(&self) -> Normalized {
         let successful_responses: f64 = self.latency_success.map(|f| f.response_count).sum();
         let failed_responses: f64 = self.latency_failure.map(|f| f.response_count).sum();
         Normalized::new(successful_responses / (successful_responses + failed_responses).max(1.0))
             .unwrap()
-    }
-
-    pub fn latency_ms(&self) -> u32 {
-        let p = self.success_rate().as_f64();
-        ((*self.latency_success() * p) + (*self.latency_failure() * (1.0 - p))) as u32
     }
 
     fn latency_success(&self) -> NotNan<f64> {
@@ -90,11 +107,13 @@ impl Performance {
 /// `recip()` calls are only necessary to avoid the expected value tending toward zero when success
 /// rates are low (because, for latency, lower is better).
 pub fn expected_value_probabilities<const LIMIT: usize>(
-    selections: &[&Performance],
+    selections: &[ExpectedPerformance],
 ) -> ArrayVec<Normalized, LIMIT> {
-    let mut ps: ArrayVec<Normalized, LIMIT> = selections.iter().map(|p| p.success_rate()).collect();
-    let mut ls: ArrayVec<NotNan<f64>, LIMIT> =
-        selections.iter().map(|p| p.latency_success()).collect();
+    let mut ps: ArrayVec<Normalized, LIMIT> = selections.iter().map(|p| p.success_rate).collect();
+    let mut ls: ArrayVec<NotNan<f64>, LIMIT> = selections
+        .iter()
+        .map(|p| NotNan::new(p.latency_success_ms as f64).unwrap())
+        .collect();
 
     let mut sort = permutation::sort_unstable_by_key(&mut ls, |r| *r);
     sort.apply_slice_in_place(&mut ps);
@@ -122,7 +141,7 @@ pub fn expected_value_probabilities<const LIMIT: usize>(
 #[cfg(test)]
 mod test {
     use super::Performance;
-    use crate::{num::assert_within, Normalized};
+    use crate::{criteria::performance::ExpectedPerformance, num::assert_within, Normalized};
     use arrayvec::ArrayVec;
 
     #[test]
@@ -134,28 +153,34 @@ mod test {
         }
         candidates[0].feedback(false, 50);
         assert_eq!(candidates[0].success_rate().as_f64(), 0.99);
-        assert_eq!(candidates[0].latency_ms(), 50);
+        assert_eq!(candidates[0].expected_performance().latency_ms(), 50);
 
         candidates[1].feedback(true, 20);
         candidates[1].feedback(false, 20);
         assert_eq!(candidates[1].success_rate().as_f64(), 0.5);
-        assert_eq!(candidates[1].latency_ms(), 20);
+        assert_eq!(candidates[1].expected_performance().latency_ms(), 20);
 
         for _ in 0..4 {
             candidates[2].feedback(true, 200);
         }
         candidates[2].feedback(false, 200);
         assert_eq!(candidates[2].success_rate().as_f64(), 0.8);
-        assert_eq!(candidates[2].latency_ms(), 200);
+        assert_eq!(candidates[2].expected_performance().latency_ms(), 200);
 
-        let selections: ArrayVec<&Performance, 3> = candidates.iter().collect();
+        let selections: ArrayVec<ExpectedPerformance, 3> = candidates
+            .iter()
+            .map(|c| c.expected_performance())
+            .collect();
         let result: ArrayVec<Normalized, 3> = super::expected_value_probabilities(&selections);
 
         assert_within(result[0].as_f64(), 0.495, 1e-4);
         assert_within(result[1].as_f64(), 0.5, 1e-4);
         assert_within(result[2].as_f64(), 0.004, 1e-4);
 
-        let latencies: ArrayVec<u32, 3> = candidates.iter().map(|c| c.latency_ms()).collect();
+        let latencies: ArrayVec<u32, 3> = candidates
+            .iter()
+            .map(|c| c.expected_performance().latency_ms())
+            .collect();
         let expected_latency = latencies
             .iter()
             .zip(&result)

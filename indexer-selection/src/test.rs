@@ -31,7 +31,7 @@ mod limits {
 prop_compose! {
     fn candidates()(
         mut candidates in proptest::collection::vec(candidate(), 1..5)
-    ) -> Vec<Candidate<'static>> {
+    ) -> Vec<Candidate> {
         for (id, candidate) in candidates.iter_mut().enumerate() {
             let mut bytes = [0; 20];
             bytes[0] = id as u8;
@@ -49,7 +49,7 @@ prop_compose! {
         zero_allocation: bool,
         avg_latency_ms: u16,
         avg_success_rate_percent in 0..=100_u8,
-    ) -> Candidate<'static> {
+    ) -> Candidate {
         let mut deployment_bytes = [0; 32];
         deployment_bytes[0] = subgraph_versions_behind;
 
@@ -64,12 +64,13 @@ prop_compose! {
         Candidate {
             indexer: [0; 20].into(),
             deployment: deployment_bytes.into(),
+            url: "https://example.com".parse().unwrap(),
+            perf: performance.expected_performance(),
             fee,
-            subgraph_versions_behind,
-            seconds_behind,
+            seconds_behind: seconds_behind as u32,
             slashable_usd,
+            subgraph_versions_behind,
             zero_allocation,
-            performance: Box::leak(Box::new(performance)),
         }
     }
 }
@@ -81,7 +82,7 @@ proptest! {
         candidates in candidates(),
     ) {
         let mut rng = SmallRng::seed_from_u64(seed);
-        let selections: ArrayVec<&Candidate<'_>, 3> = crate::select(&mut rng, &candidates);
+        let selections: ArrayVec<&Candidate, 3> = crate::select(&mut rng, &candidates);
         println!("{:#?}", selections.iter().map(|c| c.indexer).collect::<Vec<_>>());
 
         let valid_candidate = |c: &Candidate| -> bool {
