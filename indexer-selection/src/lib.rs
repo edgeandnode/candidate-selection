@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod test;
 
-use candidate_selection::criteria::performance::{expected_value_probabilities, Performance};
+use candidate_selection::criteria::performance::expected_value_probabilities;
+pub use candidate_selection::criteria::performance::Performance;
 use candidate_selection::{self, ArrayVec, Normalized};
 use std::collections::hash_map::DefaultHasher;
 use std::f64::consts::E;
