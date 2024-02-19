@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 candidate-selection = { path = "../candidate-selection" }
 rand = { version = "0.8.5", default-features = false }
-thegraph = { git = "https://github.com/edgeandnode/toolshed", tag = "thegraph-v0.5.0" }
+thegraph = { git = "https://github.com/edgeandnode/toolshed", tag = "thegraph-v0.6.0" }
 toolshed = { git = "https://github.com/edgeandnode/toolshed", tag = "toolshed-v0.5.0" }
 
 [dev-dependencies]
