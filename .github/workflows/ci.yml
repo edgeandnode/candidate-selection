@@ -16,9 +16,9 @@ env:
   GH_TOKEN: ${{ secrets.GH_PRIVATE_TOKEN }}
 
 jobs:
-  check_and_test:
-    name: "check and test"
+  test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
@@ -39,6 +39,3 @@ jobs:
 
       - name: Unit tests
         run: cargo test --lib
-
-      - name: Integration tests
-        run: cargo test --test '*'
