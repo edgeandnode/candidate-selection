@@ -2158,8 +2158,8 @@ dependencies = [
 
 [[package]]
 name = "thegraph"
-version = "0.5.0"
-source = "git+https://github.com/edgeandnode/toolshed?tag=thegraph-v0.5.0#7ab59b4fe0b19cd520edf025b72ad323be8e0506"
+version = "0.6.0"
+source = "git+https://github.com/edgeandnode/toolshed?tag=thegraph-v0.6.0#095bdc3b73dcbc1555285a605638a0c3bbd40d5b"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
@@ -2169,8 +2169,8 @@ dependencies = [
  "lazy_static",
  "serde",
  "serde_with",
- "sha3",
  "thiserror",
+ "url",
 ]
 
 [[package]]
