@@ -1,19 +1,24 @@
-#[cfg(test)]
-mod test;
+use std::collections::hash_map::DefaultHasher;
+use std::f64::consts::E;
+use std::fmt::Display;
+use std::hash::{Hash as _, Hasher as _};
+
+use custom_debug::CustomDebug;
+use thegraph::types::{Address, DeploymentId};
+use url::Url;
 
 use candidate_selection::criteria::performance::expected_value_probabilities;
 pub use candidate_selection::criteria::performance::{ExpectedPerformance, Performance};
 pub use candidate_selection::{ArrayVec, Normalized};
-use std::collections::hash_map::DefaultHasher;
-use std::f64::consts::E;
-use std::hash::{Hash as _, Hasher as _};
-use thegraph::types::{Address, DeploymentId};
-use toolshed::url::Url;
 
-#[derive(Debug)]
+#[cfg(test)]
+mod test;
+
+#[derive(CustomDebug)]
 pub struct Candidate {
     pub indexer: Address,
     pub deployment: DeploymentId,
+    #[debug(with = Display::fmt)]
     pub url: Url,
     pub perf: ExpectedPerformance,
     pub fee: Normalized,
@@ -163,4 +168,43 @@ pub fn score_latency(latency_ms: u32) -> Normalized {
 /// https://www.desmos.com/calculator/df2keku3ad
 fn score_success_rate(success_rate: Normalized) -> Normalized {
     Normalized::new(success_rate.as_f64().powi(7).max(0.01)).unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+    use candidate_selection::criteria::performance::ExpectedPerformance;
+    use candidate_selection::Normalized;
+
+    use super::Candidate;
+
+    #[test]
+    fn candidate_should_use_url_display_for_debug() {
+        //* Given
+        let expected_url = "https://example.com/candidate/test/url";
+
+        let candidate = Candidate {
+            indexer: Default::default(),
+            deployment: "QmWmyoMoctfbAaiEs2G46gpeUmhqFRDW6KWo64y5r581Vz"
+                .parse()
+                .unwrap(),
+            url: expected_url.parse().expect("valid url"),
+            perf: ExpectedPerformance {
+                success_rate: Normalized::ONE,
+                latency_success_ms: 0,
+                latency_failure_ms: 0,
+            },
+            fee: Normalized::ONE,
+            seconds_behind: 0,
+            slashable_usd: 0,
+            subgraph_versions_behind: 0,
+            zero_allocation: false,
+        };
+
+        //* When
+        let debug = format!("{:?}", candidate);
+
+        //* Then
+        // Assert that the debug string contains the url in the expected format
+        assert!(debug.contains(expected_url));
+    }
 }
