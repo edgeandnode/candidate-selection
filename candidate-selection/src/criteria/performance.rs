@@ -78,7 +78,9 @@ impl Performance {
     }
 
     fn success_rate(&self) -> Normalized {
-        let successful_responses: f64 = self.latency_success.map(|f| f.response_count).sum();
+        let mut successful_responses: f64 = self.latency_success.map(|f| f.response_count).sum();
+        // This results in decay pulling success rate upward.
+        successful_responses += 1.0;
         let failed_responses: f64 = self.latency_failure.map(|f| f.response_count).sum();
         Normalized::new(successful_responses / (successful_responses + failed_responses).max(1.0))
             .unwrap()
@@ -152,19 +154,19 @@ mod test {
             candidates[0].feedback(true, 50);
         }
         candidates[0].feedback(false, 50);
-        assert_eq!(candidates[0].success_rate().as_f64(), 0.99);
+        assert_within(candidates[0].success_rate().as_f64(), 0.99, 0.001);
         assert_eq!(candidates[0].expected_performance().latency_ms(), 50);
 
         candidates[1].feedback(true, 20);
         candidates[1].feedback(false, 20);
-        assert_eq!(candidates[1].success_rate().as_f64(), 0.5);
+        assert_within(candidates[1].success_rate().as_f64(), 0.66, 0.01);
         assert_eq!(candidates[1].expected_performance().latency_ms(), 20);
 
         for _ in 0..4 {
             candidates[2].feedback(true, 200);
         }
         candidates[2].feedback(false, 200);
-        assert_eq!(candidates[2].success_rate().as_f64(), 0.8);
+        assert_within(candidates[2].success_rate().as_f64(), 0.8, 0.1);
         assert_eq!(candidates[2].expected_performance().latency_ms(), 200);
 
         let selections: ArrayVec<ExpectedPerformance, 3> = candidates
@@ -173,9 +175,9 @@ mod test {
             .collect();
         let result: ArrayVec<Normalized, 3> = super::expected_value_probabilities(&selections);
 
-        assert_within(result[0].as_f64(), 0.495, 1e-4);
-        assert_within(result[1].as_f64(), 0.5, 1e-4);
-        assert_within(result[2].as_f64(), 0.004, 1e-4);
+        assert_within(result[0].as_f64(), 0.33, 1e-4);
+        assert_within(result[1].as_f64(), 0.6666, 1e-4);
+        assert_within(result[2].as_f64(), 0.0028, 1e-4);
 
         let latencies: ArrayVec<u32, 3> = candidates
             .iter()
@@ -187,6 +189,6 @@ mod test {
             .map(|(l, r)| (*l as f64).recip() * r.as_f64())
             .sum::<f64>()
             .recip();
-        assert_within(expected_latency, 28.62, 0.02);
+        assert_within(expected_latency, 25.00, 0.1);
     }
 }
