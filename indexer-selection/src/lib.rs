@@ -4,7 +4,8 @@ use std::fmt::Display;
 use std::hash::{Hash as _, Hasher as _};
 
 use custom_debug::CustomDebug;
-use thegraph::types::{Address, DeploymentId};
+use thegraph_core::types::alloy_primitives::Address;
+use thegraph_core::types::DeploymentId;
 use url::Url;
 
 use candidate_selection::criteria::performance::expected_value_probabilities;
