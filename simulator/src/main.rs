@@ -1,10 +1,12 @@
+use std::{collections::BTreeMap, io::stdin, time::Instant};
+
+use rand::{rngs::SmallRng, Rng, SeedableRng};
+use thegraph_core::types::alloy_primitives::Address;
+
 use candidate_selection::{
     criteria::performance::Performance, num::assert_within, ArrayVec, Normalized,
 };
 use indexer_selection::{select, Candidate};
-use rand::{rngs::SmallRng, Rng, SeedableRng};
-use std::{collections::BTreeMap, io::stdin, time::Instant};
-use thegraph::types::Address;
 
 struct IndexerCharacteristics {
     address: Address,
