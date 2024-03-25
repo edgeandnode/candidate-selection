@@ -146,10 +146,10 @@ fn score_seconds_behind(seconds_behind: u32) -> Normalized {
     Normalized::new(1.0 - E.powf(-32.0 / seconds_behind.max(1) as f64)).unwrap()
 }
 
-/// https://www.desmos.com/calculator/akqaa2gjrf
+/// https://www.desmos.com/calculator/h2w01h56xs
 fn score_slashable_usd(slashable_usd: u64) -> Normalized {
     let x = slashable_usd as f64;
-    let a = 2e-4;
+    let a = 7e-5;
     Normalized::new(1.0 - E.powf(-a * x)).unwrap()
 }
 
