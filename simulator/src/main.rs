@@ -14,13 +14,13 @@ struct IndexerCharacteristics {
     latency_ms: u32,
     fee_usd: f64,
     seconds_behind: u32,
-    slashable_usd: u64,
+    slashable_grt: u64,
     zero_allocation: bool,
 }
 
 fn main() {
     let header =
-        "address,fee_usd,seconds_behind,latency_ms,success_rate,slashable_usd,zero_allocation";
+        "address,fee_usd,seconds_behind,latency_ms,success_rate,slashable_grt,zero_allocation";
     let characteristics: Vec<IndexerCharacteristics> = stdin()
         .lines()
         .filter_map(|line| {
@@ -39,7 +39,7 @@ fn main() {
                     .ok()
                     .and_then(Normalized::new)
                     .expect("success_rate"),
-                slashable_usd: fields[5].parse().expect("slashable_usd"),
+                slashable_grt: fields[5].parse().expect("slashable_grt"),
                 zero_allocation: fields[6].parse().expect("zero_allocation"),
             })
         })
@@ -90,7 +90,7 @@ fn main() {
                 perf: perf.get(&c.address).unwrap().expected_performance(),
                 fee: Normalized::new(c.fee_usd / budget).expect("invalid fee or budget"),
                 seconds_behind: c.seconds_behind,
-                slashable_usd: c.slashable_usd,
+                slashable_grt: c.slashable_grt,
                 subgraph_versions_behind: 0,
                 zero_allocation: c.zero_allocation,
             })
