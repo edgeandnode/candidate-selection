@@ -354,7 +354,6 @@ dependencies = [
  "ordered-float",
  "permutation",
  "proptest",
- "rand",
 ]
 
 [[package]]
@@ -934,7 +933,6 @@ dependencies = [
  "candidate-selection",
  "custom_debug",
  "proptest",
- "rand",
  "thegraph-core",
  "url",
 ]

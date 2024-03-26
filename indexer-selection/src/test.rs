@@ -1,26 +1,9 @@
 use crate::*;
 use candidate_selection::num::assert_within;
 use proptest::{prop_assert, prop_compose, proptest};
-use rand::{rngs::SmallRng, SeedableRng};
 
 mod limits {
     use super::*;
-
-    #[test]
-    fn fee() {
-        assert_within(score_fee(Normalized::ZERO).as_f64(), 1.0, 1e-12);
-        assert_within(
-            score_fee(Normalized::new(1e-18).unwrap()).as_f64(),
-            1.0,
-            1e-12,
-        );
-        assert_within(score_fee(Normalized::ONE).as_f64(), 0.0, 1e-12);
-        assert_within(
-            score_fee(Normalized::new(1.0 - 1e-18).unwrap()).as_f64(),
-            0.0,
-            1e-12,
-        );
-    }
 
     #[test]
     fn success_rate() {
@@ -78,11 +61,9 @@ prop_compose! {
 proptest! {
     #[test]
     fn select(
-        seed: u64,
         candidates in candidates(),
     ) {
-        let mut rng = SmallRng::seed_from_u64(seed);
-        let selections: ArrayVec<&Candidate, 3> = crate::select(&mut rng, &candidates);
+        let selections: ArrayVec<&Candidate, 3> = crate::select(&candidates);
         println!("{:#?}", selections.iter().map(|c| c.indexer).collect::<Vec<_>>());
 
         let valid_candidate = |c: &Candidate| -> bool {

@@ -29,7 +29,7 @@ impl Normalized {
         self == &Self::ZERO
     }
 
-    pub fn arbitrary() -> impl Strategy<Value = Normalized> {
+    pub fn arbitrary() -> impl Strategy<Value = Self> {
         (0.0..=1.0).prop_map(|n| Normalized::new(n).unwrap())
     }
 }

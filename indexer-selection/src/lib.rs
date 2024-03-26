@@ -29,16 +29,8 @@ pub struct Candidate {
     pub zero_allocation: bool,
 }
 
-const MIN_SCORE_CUTOFF: f64 = 0.25;
-
-pub fn select<'c, Rng, const LIMIT: usize>(
-    rng: &mut Rng,
-    candidates: &'c [Candidate],
-) -> ArrayVec<&'c Candidate, LIMIT>
-where
-    Rng: rand::Rng,
-{
-    candidate_selection::select(rng, candidates, Normalized::new(MIN_SCORE_CUTOFF).unwrap())
+pub fn select<const LIMIT: usize>(candidates: &[Candidate]) -> ArrayVec<&Candidate, LIMIT> {
+    candidate_selection::select(candidates)
 }
 
 impl candidate_selection::Candidate for Candidate {
@@ -51,11 +43,14 @@ impl candidate_selection::Candidate for Candidate {
         hasher.finish()
     }
 
+    fn fee(&self) -> Normalized {
+        self.fee
+    }
+
     fn score(&self) -> Normalized {
         [
             score_success_rate(self.perf.success_rate),
             score_latency(self.perf.latency_ms()),
-            score_fee(self.fee),
             score_seconds_behind(self.seconds_behind),
             score_slashable_grt(self.slashable_grt),
             score_subgraph_versions_behind(self.subgraph_versions_behind),
@@ -67,10 +62,9 @@ impl candidate_selection::Candidate for Candidate {
 
     fn score_many<const LIMIT: usize>(candidates: &[&Self]) -> Normalized {
         let fee = candidates.iter().map(|c| c.fee.as_f64()).sum::<f64>();
-        let fee = match Normalized::new(fee) {
-            Some(fee) => fee,
-            None => return Normalized::ZERO,
-        };
+        if Normalized::new(fee).is_none() {
+            return Normalized::ZERO;
+        }
 
         let perf: ArrayVec<ExpectedPerformance, LIMIT> =
             candidates.iter().map(|c| c.perf).collect();
@@ -113,7 +107,6 @@ impl candidate_selection::Candidate for Candidate {
         [
             score_success_rate(success_rate),
             score_latency(latency),
-            score_fee(fee),
             score_seconds_behind(seconds_behind),
             score_slashable_grt(slashable_grt),
             score_subgraph_versions_behind(subgraph_versions_behind),
@@ -124,21 +117,9 @@ impl candidate_selection::Candidate for Candidate {
     }
 }
 
-/// Score the given `fee`, which is a fraction of some budget. The weight chosen for WPM should be
-/// set to target the "optimal" value shown as the vertical line in the following plot.
-/// https://www.desmos.com/calculator/wf0tsp1sxh
-pub fn score_fee(fee: Normalized) -> Normalized {
-    // (5_f64.sqrt() - 1.0) / 2.0
-    const S: f64 = 0.6180339887498949;
-    let score = (fee.as_f64() + S).recip() - S;
-    // Set minimum score, since a very small negative value can result from loss of precision when
-    // the fee approaches the budget.
-    Normalized::new(score.max(1e-18)).unwrap()
-}
-
 /// Avoid serving deployments at versions behind, unless newer versions have poor indexer support.
 fn score_subgraph_versions_behind(subgraph_versions_behind: u8) -> Normalized {
-    Normalized::new(MIN_SCORE_CUTOFF.powi(subgraph_versions_behind as i32)).unwrap()
+    Normalized::new(0.25_f64.powi(subgraph_versions_behind as i32)).unwrap()
 }
 
 /// https://www.desmos.com/calculator/wmgkasfvza
