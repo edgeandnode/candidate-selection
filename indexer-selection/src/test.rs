@@ -45,7 +45,7 @@ prop_compose! {
         fee in Normalized::arbitrary(),
         subgraph_versions_behind in 0..=3_u8,
         seconds_behind: u16,
-        slashable_usd: u64,
+        slashable_grt: u64,
         zero_allocation: bool,
         avg_latency_ms: u16,
         avg_success_rate_percent in 0..=100_u8,
@@ -68,7 +68,7 @@ prop_compose! {
             perf: performance.expected_performance(),
             fee,
             seconds_behind: seconds_behind as u32,
-            slashable_usd,
+            slashable_grt,
             subgraph_versions_behind,
             zero_allocation,
         }
@@ -86,7 +86,7 @@ proptest! {
         println!("{:#?}", selections.iter().map(|c| c.indexer).collect::<Vec<_>>());
 
         let valid_candidate = |c: &Candidate| -> bool {
-            c.slashable_usd > 0
+            c.slashable_grt > 0
         };
         let valid_selections = candidates.iter().filter(|c| valid_candidate(c)).count();
 

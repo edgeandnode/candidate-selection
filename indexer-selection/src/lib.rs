@@ -24,7 +24,7 @@ pub struct Candidate {
     pub perf: ExpectedPerformance,
     pub fee: Normalized,
     pub seconds_behind: u32,
-    pub slashable_usd: u64,
+    pub slashable_grt: u64,
     pub subgraph_versions_behind: u8,
     pub zero_allocation: bool,
 }
@@ -57,7 +57,7 @@ impl candidate_selection::Candidate for Candidate {
             score_latency(self.perf.latency_ms()),
             score_fee(self.fee),
             score_seconds_behind(self.seconds_behind),
-            score_slashable_usd(self.slashable_usd),
+            score_slashable_grt(self.slashable_grt),
             score_subgraph_versions_behind(self.subgraph_versions_behind),
             score_zero_allocation(self.zero_allocation),
         ]
@@ -96,9 +96,9 @@ impl candidate_selection::Candidate for Candidate {
             .zip(&p)
             .map(|(x, p)| x as f64 * p.as_f64())
             .sum::<f64>() as u32;
-        let slashable_usd = candidates
+        let slashable_grt = candidates
             .iter()
-            .map(|c| c.slashable_usd)
+            .map(|c| c.slashable_grt)
             .zip(&p)
             .map(|(x, p)| x as f64 * p.as_f64())
             .sum::<f64>() as u64;
@@ -115,7 +115,7 @@ impl candidate_selection::Candidate for Candidate {
             score_latency(latency),
             score_fee(fee),
             score_seconds_behind(seconds_behind),
-            score_slashable_usd(slashable_usd),
+            score_slashable_grt(slashable_grt),
             score_subgraph_versions_behind(subgraph_versions_behind),
             score_zero_allocation(p_zero_allocation),
         ]
@@ -146,10 +146,11 @@ fn score_seconds_behind(seconds_behind: u32) -> Normalized {
     Normalized::new(1.0 - E.powf(-32.0 / seconds_behind.max(1) as f64)).unwrap()
 }
 
-/// https://www.desmos.com/calculator/akqaa2gjrf
-fn score_slashable_usd(slashable_usd: u64) -> Normalized {
-    let x = slashable_usd as f64;
-    let a = 2e-4;
+/// https://www.desmos.com/calculator/iqhjcdnphv
+fn score_slashable_grt(slashable_grt: u64) -> Normalized {
+    let x = slashable_grt as f64;
+    // Currently setting a minimum score of ~0.8 at the minimum stake requirement of 100,000 GRT.
+    let a = 1.6e-5;
     Normalized::new(1.0 - E.powf(-a * x)).unwrap()
 }
 
@@ -196,7 +197,7 @@ mod tests {
             },
             fee: Normalized::ONE,
             seconds_behind: 0,
-            slashable_usd: 0,
+            slashable_grt: 0,
             subgraph_versions_behind: 0,
             zero_allocation: false,
         };
