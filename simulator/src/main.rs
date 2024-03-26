@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, io::stdin, time::Instant};
 
-use rand::{rngs::SmallRng, Rng, SeedableRng};
+use rand::{thread_rng, Rng as _};
 use thegraph_core::types::alloy_primitives::Address;
 
 use candidate_selection::{
@@ -45,7 +45,7 @@ fn main() {
         })
         .collect();
 
-    let mut rng = SmallRng::from_entropy();
+    let mut rng = thread_rng();
 
     let mut perf: BTreeMap<Address, Performance> = characteristics
         .iter()
@@ -97,7 +97,7 @@ fn main() {
             .collect();
 
         let t0 = Instant::now();
-        let selections: ArrayVec<&Candidate, 3> = select(&mut rng, &candidates);
+        let selections: ArrayVec<&Candidate, 3> = select(&candidates);
         total_selection_μs += Instant::now().duration_since(t0).as_micros();
         total_fees_usd += selections
             .iter()
