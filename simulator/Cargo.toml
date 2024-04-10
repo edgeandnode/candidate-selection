@@ -7,4 +7,4 @@ edition = "2021"
 candidate-selection = { path = "../candidate-selection" }
 indexer-selection = { path = "../indexer-selection" }
 rand = { version = "0.8.5", default-features = true, features = ["small_rng"] }
-thegraph-core = "0.2.2"
+thegraph-core = "0.2.3"
