@@ -7,7 +7,7 @@ edition = "2021"
 candidate-selection = { path = "../candidate-selection" }
 custom_debug = "0.6.1"
 rand = { version = "0.8.5", default-features = false }
-thegraph-core = "0.2.3"
+thegraph-core = "0.3.0"
 url = "2.5.0"
 
 [dev-dependencies]
