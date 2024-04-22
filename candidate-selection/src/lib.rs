@@ -15,15 +15,10 @@ pub trait Candidate {
     fn score_many<const LIMIT: usize>(candidates: &[&Self]) -> Normalized;
 }
 
-/// Perform a random selection of up to `LIMIT` of the provided candidates. Candidates are picked
-/// using a random selection weighted by their individual score. Additional candidates are only
-/// added as their inclusion in the selected set increases the combined score of the selected set.
+/// Select up to `LIMIT` of the provided candidates.
 ///
 /// At least one candidate will be selected, as long as there is at least one candidate with an
 /// individual score greater than 0.
-///
-/// If a candidate's score is below `min_score_cutoff` as a proportion of the max provider's
-/// individual score, then the provider will not be selected.
 pub fn select<'c, Candidate, const LIMIT: usize>(
     candidates: &'c [Candidate],
 ) -> ArrayVec<&'c Candidate, LIMIT>
