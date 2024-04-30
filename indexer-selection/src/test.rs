@@ -1,6 +1,7 @@
 use crate::*;
-use candidate_selection::num::assert_within;
+use candidate_selection::{num::assert_within, Candidate as _};
 use proptest::{prop_assert, prop_compose, proptest};
+use std::ops::RangeInclusive;
 
 mod limits {
     use super::*;
@@ -12,23 +13,16 @@ mod limits {
 }
 
 prop_compose! {
-    fn candidates()(
-        mut candidates in proptest::collection::vec(candidate(), 1..5)
-    ) -> Vec<Candidate> {
-        for (id, candidate) in candidates.iter_mut().enumerate() {
-            let mut bytes = [0; 20];
-            bytes[0] = id as u8;
-            candidate.indexer = bytes.into();
-        }
-        candidates
+    fn normalized()(n in 0..=10) -> Normalized {
+        Normalized::new(n as f64 / 10.0).unwrap()
     }
 }
 prop_compose! {
     fn candidate()(
-        fee in Normalized::arbitrary(),
+        fee in normalized(),
         subgraph_versions_behind in 0..=3_u8,
         seconds_behind: u16,
-        slashable_grt: u64,
+        slashable_grt: u32,
         zero_allocation: bool,
         avg_latency_ms: u16,
         avg_success_rate_percent in 0..=100_u8,
@@ -45,29 +39,40 @@ prop_compose! {
         }
 
         Candidate {
-            indexer: [0; 20].into(),
+            indexer: Default::default(),
             deployment: deployment_bytes.into(),
             url: "https://example.com".parse().unwrap(),
             perf: performance.expected_performance(),
             fee,
             seconds_behind: seconds_behind as u32,
-            slashable_grt,
+            slashable_grt: slashable_grt as u64,
             subgraph_versions_behind,
             zero_allocation,
         }
     }
 }
+prop_compose! {
+    fn candidates(range: RangeInclusive<usize>)(
+        mut candidates in proptest::collection::vec(candidate(), range)
+    ) -> Vec<Candidate> {
+        for (id, candidate) in candidates.iter_mut().enumerate() {
+            let mut bytes = [0; 20];
+            bytes[0] = id as u8;
+            candidate.indexer = bytes.into();
+        }
+        candidates
+    }
+}
 
 proptest! {
     #[test]
-    fn select(
-        candidates in candidates(),
-    ) {
+    fn select(candidates in candidates(1..=5)) {
+        println!("scores: {:#?}", candidates.iter().map(|c| (c.indexer, c.score())).collect::<Vec<_>>());
         let selections: ArrayVec<&Candidate, 3> = crate::select(&candidates);
-        println!("{:#?}", selections.iter().map(|c| c.indexer).collect::<Vec<_>>());
+        println!("selections: {:#?}", selections.iter().map(|c| c.indexer).collect::<Vec<_>>());
 
         let valid_candidate = |c: &Candidate| -> bool {
-            c.slashable_grt > 0
+            c.score() != Normalized::ZERO
         };
         let valid_selections = candidates.iter().filter(|c| valid_candidate(c)).count();
 

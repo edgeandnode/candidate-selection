@@ -29,7 +29,12 @@ impl Candidate for TestCandidate {
 }
 
 prop_compose! {
-    fn candidate()(id: u8, fee in Normalized::arbitrary(), score in Normalized::arbitrary()) -> TestCandidate {
+    fn normalized()(numerator in 0..=64) -> Normalized {
+        Normalized::new(numerator as f64 / 64.0).unwrap()
+    }
+}
+prop_compose! {
+    fn candidate()(id: u8, fee in normalized(), score in normalized()) -> TestCandidate {
         TestCandidate { id, fee, score }
     }
 }

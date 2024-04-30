@@ -1,5 +1,4 @@
 use ordered_float::NotNan;
-use proptest::strategy::Strategy;
 
 /// A non-NaN f64 value in the range [0, 1].
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -27,10 +26,6 @@ impl Normalized {
 
     pub fn is_zero(&self) -> bool {
         self == &Self::ZERO
-    }
-
-    pub fn arbitrary() -> impl Strategy<Value = Self> {
-        (0.0..=1.0).prop_map(|n| Normalized::new(n).unwrap())
     }
 }
 

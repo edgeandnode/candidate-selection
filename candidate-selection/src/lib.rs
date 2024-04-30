@@ -30,9 +30,13 @@ where
     let marginal_score = |current_score: Normalized,
                           selected: &ArrayVec<&'c Candidate, LIMIT>,
                           candidate: &'c Candidate| {
-        let mut buf = selected.clone();
-        buf.push(candidate);
-        let potential_score = Candidate::score_many::<LIMIT>(&buf);
+        let potential_score = if selected.is_empty() {
+            Candidate::score(candidate)
+        } else {
+            let mut buf = selected.clone();
+            buf.push(candidate);
+            Candidate::score_many::<LIMIT>(&buf)
+        };
         NotNan::new(potential_score.as_f64() - current_score.as_f64()).unwrap()
     };
 
@@ -47,13 +51,11 @@ where
             .iter()
             .filter(|c| selected.iter().all(|s| s.id() != c.id()))
             .map(|c| (c, marginal_score(current_score, &selected, c)))
-            .max_by_key(|(c, marginal_score)| {
-                if c.fee() == Normalized::ZERO {
-                    return *marginal_score;
-                }
-                marginal_score / c.fee().as_f64()
-            })
+            .max_by_key(|(c, marginal_score)| marginal_score / c.fee().as_f64().max(0.01))
             .filter(|(c, marginal_score)| {
+                if *marginal_score.as_ref() <= 0.0 {
+                    return false;
+                }
                 if current_score == Normalized::ZERO {
                     return true;
                 }
