@@ -70,7 +70,8 @@ impl candidate_selection::Candidate for Candidate {
             candidates.iter().map(|c| c.perf).collect();
         let p = expected_value_probabilities::<LIMIT>(&perf);
 
-        let success_rate = Normalized::new(p.iter().map(|p| p.as_f64()).sum()).unwrap();
+        let success_rate =
+            Normalized::new(p.iter().map(|p| p.as_f64()).sum()).unwrap_or(Normalized::ONE);
         let latency = candidates
             .iter()
             .map(|c| c.perf.latency_ms() as f64)
