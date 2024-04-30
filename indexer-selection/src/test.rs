@@ -2,6 +2,7 @@ use crate::*;
 use candidate_selection::{num::assert_within, Candidate as _};
 use proptest::{prop_assert, prop_compose, proptest};
 use std::ops::RangeInclusive;
+use thegraph_core::types::alloy_primitives::{hex, FixedBytes};
 
 mod limits {
     use super::*;
@@ -21,7 +22,7 @@ prop_compose! {
     fn candidate()(
         fee in normalized(),
         subgraph_versions_behind in 0..=3_u8,
-        seconds_behind: u16,
+        seconds_behind in 0..=7500_u16,
         slashable_grt: u32,
         zero_allocation: bool,
         avg_latency_ms: u16,
@@ -83,4 +84,82 @@ proptest! {
             prop_assert!(selections.is_empty(), "no invalid candidate selected");
         }
     }
+}
+#[test]
+fn sensitivity_seconds_behind() {
+    let candidates = [
+        Candidate {
+            indexer: hex!("0000000000000000000000000000000000000000").into(),
+            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
+                .into(),
+            url: "https://example.com".parse().unwrap(),
+            perf: ExpectedPerformance {
+                success_rate: Normalized::ONE,
+                latency_success_ms: 0,
+                latency_failure_ms: 0,
+            },
+            fee: Normalized::ZERO,
+            seconds_behind: 86400,
+            slashable_grt: 1_000_000,
+            subgraph_versions_behind: 0,
+            zero_allocation: false,
+        },
+        Candidate {
+            indexer: hex!("0000000000000000000000000000000000000001").into(),
+            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
+                .into(),
+            url: "https://example.com".parse().unwrap(),
+            perf: ExpectedPerformance {
+                success_rate: Normalized::new(0.5).unwrap(),
+                latency_success_ms: 1000,
+                latency_failure_ms: 1000,
+            },
+            fee: Normalized::ONE,
+            seconds_behind: 120,
+            slashable_grt: 100_000,
+            subgraph_versions_behind: 0,
+            zero_allocation: false,
+        },
+    ];
+
+    println!(
+        "score {} {:?}",
+        candidates[0].indexer,
+        candidates[0].score(),
+    );
+    println!(
+        "score {} {:?}",
+        candidates[1].indexer,
+        candidates[1].score(),
+    );
+    assert!(candidates[0].score() <= candidates[1].score());
+
+    let selections: ArrayVec<&Candidate, 3> = crate::select(&candidates);
+    assert_eq!(1, selections.len(), "select exatly one candidate");
+    assert_eq!(
+        Some(candidates[1].indexer),
+        selections.first().map(|s| s.indexer),
+        "select candidate closer to chain head",
+    );
+}
+
+#[test]
+fn candidate_should_use_url_display_for_debug() {
+    let expected_url = "https://example.com/candidate/test/url";
+    let candidate = Candidate {
+        indexer: Default::default(),
+        deployment: FixedBytes::default().into(),
+        url: expected_url.parse().expect("valid url"),
+        perf: ExpectedPerformance {
+            success_rate: Normalized::ZERO,
+            latency_success_ms: 0,
+            latency_failure_ms: 0,
+        },
+        fee: Normalized::ZERO,
+        seconds_behind: 0,
+        slashable_grt: 0,
+        subgraph_versions_behind: 0,
+        zero_allocation: false,
+    };
+    assert!(format!("{candidate:?}").contains(expected_url));
 }

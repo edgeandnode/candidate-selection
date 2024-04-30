@@ -117,14 +117,22 @@ impl candidate_selection::Candidate for Candidate {
     }
 }
 
+// When picking curves to use consider the following reference:
+// https://en.wikipedia.org/wiki/Logistic_function
+
 /// Avoid serving deployments at versions behind, unless newer versions have poor indexer support.
 fn score_subgraph_versions_behind(subgraph_versions_behind: u8) -> Normalized {
     Normalized::new(0.25_f64.powi(subgraph_versions_behind as i32)).unwrap()
 }
 
-/// https://www.desmos.com/calculator/wmgkasfvza
+/// https://www.desmos.com/calculator/gzmp7rbiai
 fn score_seconds_behind(seconds_behind: u32) -> Normalized {
-    Normalized::new(1.0 - E.powf(-32.0 / seconds_behind.max(1) as f64)).unwrap()
+    let b: f64 = 1e-6;
+    let l: f64 = 1.6;
+    let k: f64 = 0.017;
+    let x_0: i64 = 30;
+    let u = b + (l / (1.0 + E.powf(k * (seconds_behind as i64 - x_0) as f64)));
+    Normalized::new(u).unwrap()
 }
 
 /// https://www.desmos.com/calculator/iqhjcdnphv
@@ -144,50 +152,11 @@ fn score_zero_allocation(zero_allocation: bool) -> Normalized {
 
 /// https://www.desmos.com/calculator/v2vrfktlpl
 pub fn score_latency(latency_ms: u32) -> Normalized {
-    let sigmoid = |x: u32| 1.0 + std::f64::consts::E.powf(((x as f64) - 400.0) / 300.0);
-    Normalized::new(sigmoid(0) / sigmoid(latency_ms)).unwrap()
+    let s = |x: u32| 1.0 + E.powf(((x as f64) - 400.0) / 300.0);
+    Normalized::new(s(0) / s(latency_ms)).unwrap()
 }
 
 /// https://www.desmos.com/calculator/df2keku3ad
 fn score_success_rate(success_rate: Normalized) -> Normalized {
     Normalized::new(success_rate.as_f64().powi(7).max(0.01)).unwrap()
-}
-
-#[cfg(test)]
-mod tests {
-    use candidate_selection::criteria::performance::ExpectedPerformance;
-    use candidate_selection::Normalized;
-
-    use super::Candidate;
-
-    #[test]
-    fn candidate_should_use_url_display_for_debug() {
-        //* Given
-        let expected_url = "https://example.com/candidate/test/url";
-
-        let candidate = Candidate {
-            indexer: Default::default(),
-            deployment: "QmWmyoMoctfbAaiEs2G46gpeUmhqFRDW6KWo64y5r581Vz"
-                .parse()
-                .unwrap(),
-            url: expected_url.parse().expect("valid url"),
-            perf: ExpectedPerformance {
-                success_rate: Normalized::ONE,
-                latency_success_ms: 0,
-                latency_failure_ms: 0,
-            },
-            fee: Normalized::ONE,
-            seconds_behind: 0,
-            slashable_grt: 0,
-            subgraph_versions_behind: 0,
-            zero_allocation: false,
-        };
-
-        //* When
-        let debug = format!("{:?}", candidate);
-
-        //* Then
-        // Assert that the debug string contains the url in the expected format
-        assert!(debug.contains(expected_url));
-    }
 }
