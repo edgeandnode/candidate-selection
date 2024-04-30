@@ -85,6 +85,7 @@ proptest! {
         }
     }
 }
+
 #[test]
 fn sensitivity_seconds_behind() {
     let candidates = [
