@@ -4,12 +4,33 @@ use proptest::{prop_assert, prop_compose, proptest};
 use std::ops::RangeInclusive;
 use thegraph_core::types::alloy_primitives::{hex, FixedBytes};
 
+#[test]
+fn candidate_should_use_url_display_for_debug() {
+    let expected_url = "https://example.com/candidate/test/url";
+    let candidate = Candidate {
+        indexer: Default::default(),
+        deployment: FixedBytes::default().into(),
+        url: expected_url.parse().expect("valid url"),
+        perf: ExpectedPerformance {
+            success_rate: Normalized::ZERO,
+            latency_success_ms: 0,
+            latency_failure_ms: 0,
+        },
+        fee: Normalized::ZERO,
+        seconds_behind: 0,
+        slashable_grt: 0,
+        subgraph_versions_behind: 0,
+        zero_allocation: false,
+    };
+    assert!(format!("{candidate:?}").contains(expected_url));
+}
+
 mod limits {
     use super::*;
 
     #[test]
     fn success_rate() {
-        assert_within(score_success_rate(Normalized::ZERO).as_f64(), 0.01, 0.001);
+        assert_within(score_success_rate(Normalized::ZERO).as_f64(), 1e-8, 0.001);
     }
 }
 
@@ -142,25 +163,4 @@ fn sensitivity_seconds_behind() {
         selections.first().map(|s| s.indexer),
         "select candidate closer to chain head",
     );
-}
-
-#[test]
-fn candidate_should_use_url_display_for_debug() {
-    let expected_url = "https://example.com/candidate/test/url";
-    let candidate = Candidate {
-        indexer: Default::default(),
-        deployment: FixedBytes::default().into(),
-        url: expected_url.parse().expect("valid url"),
-        perf: ExpectedPerformance {
-            success_rate: Normalized::ZERO,
-            latency_success_ms: 0,
-            latency_failure_ms: 0,
-        },
-        fee: Normalized::ZERO,
-        seconds_behind: 0,
-        slashable_grt: 0,
-        subgraph_versions_behind: 0,
-        zero_allocation: false,
-    };
-    assert!(format!("{candidate:?}").contains(expected_url));
 }

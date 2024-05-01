@@ -159,5 +159,6 @@ pub fn score_latency(latency_ms: u32) -> Normalized {
 
 /// https://www.desmos.com/calculator/df2keku3ad
 fn score_success_rate(success_rate: Normalized) -> Normalized {
-    Normalized::new(success_rate.as_f64().powi(7).max(0.01)).unwrap()
+    let min_score = 1e-8;
+    Normalized::new(success_rate.as_f64().powi(7).max(min_score)).unwrap()
 }
