@@ -25,7 +25,8 @@ pub struct Candidate {
     pub fee: Normalized,
     pub seconds_behind: u32,
     pub slashable_grt: u64,
-    pub subgraph_versions_behind: u8,
+    /// subgraph versions behind latest deployment
+    pub versions_behind: u8,
     pub zero_allocation: bool,
 }
 
@@ -53,7 +54,7 @@ impl candidate_selection::Candidate for Candidate {
             score_latency(self.perf.latency_ms()),
             score_seconds_behind(self.seconds_behind),
             score_slashable_grt(self.slashable_grt),
-            score_subgraph_versions_behind(self.subgraph_versions_behind),
+            score_subgraph_versions_behind(self.versions_behind),
             score_zero_allocation(self.zero_allocation),
         ]
         .into_iter()
@@ -79,39 +80,18 @@ impl candidate_selection::Candidate for Candidate {
             .map(|(x, p)| x.recip() * p.as_f64())
             .sum::<f64>()
             .recip() as u32;
-        let subgraph_versions_behind = candidates
-            .iter()
-            .map(|c| c.subgraph_versions_behind)
-            .zip(&p)
-            .map(|(x, p)| x as f64 * p.as_f64())
-            .sum::<f64>() as u8;
-        let seconds_behind = candidates
-            .iter()
-            .map(|c| c.seconds_behind)
-            .zip(&p)
-            .map(|(x, p)| x as f64 * p.as_f64())
-            .sum::<f64>() as u32;
-        let slashable_grt = candidates
-            .iter()
-            .map(|c| c.slashable_grt)
-            .zip(&p)
-            .map(|(x, p)| x as f64 * p.as_f64())
-            .sum::<f64>() as u64;
-        let p_zero_allocation = candidates
-            .iter()
-            .map(|c| c.zero_allocation)
-            .zip(&p)
-            .map(|(x, p)| x as u8 as f64 * p.as_f64())
-            .sum::<f64>()
-            > 0.5;
+        let seconds_behind = candidates.iter().map(|c| c.seconds_behind).max().unwrap();
+        let slashable_grt = candidates.iter().map(|c| c.slashable_grt).min().unwrap();
+        let versions_behind = candidates.iter().map(|c| c.versions_behind).max().unwrap();
+        let zero_allocation = candidates.iter().any(|c| c.zero_allocation);
 
         [
             score_success_rate(success_rate),
             score_latency(latency),
             score_seconds_behind(seconds_behind),
             score_slashable_grt(slashable_grt),
-            score_subgraph_versions_behind(subgraph_versions_behind),
-            score_zero_allocation(p_zero_allocation),
+            score_subgraph_versions_behind(versions_behind),
+            score_zero_allocation(zero_allocation),
         ]
         .into_iter()
         .product()
@@ -121,9 +101,9 @@ impl candidate_selection::Candidate for Candidate {
 // When picking curves to use consider the following reference:
 // https://en.wikipedia.org/wiki/Logistic_function
 
-/// Avoid serving deployments at versions behind, unless newer versions have poor indexer support.
-fn score_subgraph_versions_behind(subgraph_versions_behind: u8) -> Normalized {
-    Normalized::new(0.25_f64.powi(subgraph_versions_behind as i32)).unwrap()
+/// Avoid serving deployments behind latest version, unless newer versions have poor indexer support.
+fn score_subgraph_versions_behind(versions_behind: u8) -> Normalized {
+    Normalized::new(0.25_f64.powi(versions_behind as i32)).unwrap()
 }
 
 /// https://www.desmos.com/calculator/gzmp7rbiai
