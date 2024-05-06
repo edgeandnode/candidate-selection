@@ -19,7 +19,7 @@ fn candidate_should_use_url_display_for_debug() {
         fee: Normalized::ZERO,
         seconds_behind: 0,
         slashable_grt: 0,
-        subgraph_versions_behind: 0,
+        versions_behind: 0,
         zero_allocation: false,
     };
     assert!(format!("{candidate:?}").contains(expected_url));
@@ -42,7 +42,7 @@ prop_compose! {
 prop_compose! {
     fn candidate()(
         fee in normalized(),
-        subgraph_versions_behind in 0..=3_u8,
+        versions_behind in 0..=3_u8,
         seconds_behind in 0..=7500_u16,
         slashable_grt: u32,
         zero_allocation: bool,
@@ -50,7 +50,7 @@ prop_compose! {
         avg_success_rate_percent in 0..=100_u8,
     ) -> Candidate {
         let mut deployment_bytes = [0; 32];
-        deployment_bytes[0] = subgraph_versions_behind;
+        deployment_bytes[0] = versions_behind;
 
         let mut performance = Performance::default();
         for _ in 0..avg_success_rate_percent {
@@ -68,7 +68,7 @@ prop_compose! {
             fee,
             seconds_behind: seconds_behind as u32,
             slashable_grt: slashable_grt as u64,
-            subgraph_versions_behind,
+            versions_behind,
             zero_allocation,
         }
     }
@@ -123,7 +123,7 @@ fn sensitivity_seconds_behind() {
             fee: Normalized::ZERO,
             seconds_behind: 86400,
             slashable_grt: 1_000_000,
-            subgraph_versions_behind: 0,
+            versions_behind: 0,
             zero_allocation: false,
         },
         Candidate {
@@ -139,7 +139,7 @@ fn sensitivity_seconds_behind() {
             fee: Normalized::ONE,
             seconds_behind: 120,
             slashable_grt: 100_000,
-            subgraph_versions_behind: 0,
+            versions_behind: 0,
             zero_allocation: false,
         },
     ];
