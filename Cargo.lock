@@ -1706,16 +1706,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "simulator"
-version = "0.1.0"
-dependencies = [
- "candidate-selection",
- "indexer-selection",
- "rand",
- "thegraph-core",
-]
-
-[[package]]
 name = "spki"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1830,9 +1820,9 @@ dependencies = [
 
 [[package]]
 name = "thegraph-core"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0f179034f9427c1238d3024f771ac1b728562c27491f219b9abd831855d5b7e"
+checksum = "6b4a90422724ef5e056689c0b3df49c3859eb0a63b54b2996d5442015d3747a5"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
