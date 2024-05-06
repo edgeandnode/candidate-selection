@@ -34,7 +34,7 @@ pub struct Candidate {
 #[derive(Clone, Copy, Debug)]
 pub struct ExpectedPerformance {
     pub success_rate: Normalized,
-    pub latency_ms_p99: u16,
+    pub latency_ms_p50: u16,
 }
 
 pub fn select<const LIMIT: usize>(candidates: &[Candidate]) -> ArrayVec<&Candidate, LIMIT> {
@@ -58,7 +58,7 @@ impl candidate_selection::Candidate for Candidate {
     fn score(&self) -> Normalized {
         [
             score_success_rate(self.perf.success_rate),
-            score_latency(self.perf.latency_ms_p99),
+            score_latency(self.perf.latency_ms_p50),
             score_seconds_behind(self.seconds_behind),
             score_slashable_grt(self.slashable_grt),
             score_versions_behind(self.versions_behind),
@@ -75,7 +75,7 @@ impl candidate_selection::Candidate for Candidate {
         }
 
         // candidate latencies
-        let ls: ArrayVec<u16, LIMIT> = candidates.iter().map(|c| c.perf.latency_ms_p99).collect();
+        let ls: ArrayVec<u16, LIMIT> = candidates.iter().map(|c| c.perf.latency_ms_p50).collect();
         // probability of candidate responses returning to client, based on `ls`
         let ps = {
             let mut ps: ArrayVec<Normalized, LIMIT> =

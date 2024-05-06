@@ -13,7 +13,7 @@ fn candidate_should_use_url_display_for_debug() {
         url: expected_url.parse().expect("valid url"),
         perf: ExpectedPerformance {
             success_rate: Normalized::ZERO,
-            latency_ms_p99: 0,
+            latency_ms_p50: 0,
         },
         fee: Normalized::ZERO,
         seconds_behind: 0,
@@ -63,7 +63,7 @@ prop_compose! {
             indexer: Default::default(),
             deployment: deployment_bytes.into(),
             url: "https://example.com".parse().unwrap(),
-            perf: ExpectedPerformance { success_rate: performance.success_rate(), latency_ms_p99: performance.latency_percentile(99) },
+            perf: ExpectedPerformance { success_rate: performance.success_rate(), latency_ms_p50: performance.latency_percentile(50) },
             fee,
             seconds_behind: seconds_behind as u32,
             slashable_grt: slashable_grt as u64,
@@ -116,7 +116,7 @@ fn sensitivity_seconds_behind() {
             url: "https://example.com".parse().unwrap(),
             perf: ExpectedPerformance {
                 success_rate: Normalized::ONE,
-                latency_ms_p99: 0,
+                latency_ms_p50: 0,
             },
             fee: Normalized::ZERO,
             seconds_behind: 86400,
@@ -131,7 +131,7 @@ fn sensitivity_seconds_behind() {
             url: "https://example.com".parse().unwrap(),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.50).unwrap(),
-                latency_ms_p99: 1_000,
+                latency_ms_p50: 1_000,
             },
             fee: Normalized::ONE,
             seconds_behind: 120,
@@ -173,7 +173,7 @@ fn perf_decay() {
         url: "https://example.com".parse().unwrap(),
         perf: ExpectedPerformance {
             success_rate: perf.success_rate(),
-            latency_ms_p99: perf.latency_percentile(99),
+            latency_ms_p50: perf.latency_percentile(50),
         },
         fee: Normalized::ZERO,
         seconds_behind: 0,
@@ -192,7 +192,7 @@ fn perf_decay() {
         }
         candidate.perf = ExpectedPerformance {
             success_rate: perf.success_rate(),
-            latency_ms_p99: perf.latency_percentile(99),
+            latency_ms_p50: perf.latency_percentile(50),
         };
         candidate.score()
     };
@@ -218,7 +218,7 @@ fn perf_combine() {
             url: "https://example.com".parse().unwrap(),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.90).unwrap(),
-                latency_ms_p99: 200,
+                latency_ms_p50: 200,
             },
             fee: Normalized::ZERO,
             seconds_behind: 0,
@@ -233,7 +233,7 @@ fn perf_combine() {
             url: "https://example.com".parse().unwrap(),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.90).unwrap(),
-                latency_ms_p99: 150,
+                latency_ms_p50: 150,
             },
             fee: Normalized::ZERO,
             seconds_behind: 0,
