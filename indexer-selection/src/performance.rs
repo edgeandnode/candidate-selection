@@ -2,10 +2,13 @@ use candidate_selection::Normalized;
 
 #[derive(Clone, Debug, Default)]
 pub struct Performance {
-    total_latency_ms: f64,
-    success_count: f64,
-    failure_count: f64,
+    fast: Frame,
+    slow: Frame,
 }
+
+const FAST_BIAS: f64 = 0.8;
+const FAST_DECAY_HZ: f64 = 0.05;
+const SLOW_DECAY_HZ: f64 = 0.001;
 
 #[derive(Clone, Copy, Debug)]
 pub struct ExpectedPerformance {
@@ -22,16 +25,45 @@ impl Performance {
     }
 
     pub fn feedback(&mut self, success: bool, latency_ms: u16) {
-        self.total_latency_ms += latency_ms as f64;
-        if success {
-            self.success_count += 1.0;
-        } else {
-            self.failure_count += 1.0;
+        for frame in [&mut self.fast, &mut self.slow] {
+            frame.total_latency_ms += latency_ms as f64;
+            if success {
+                frame.success_count += 1.0;
+            } else {
+                frame.failure_count += 1.0;
+            }
         }
     }
 
     pub fn decay(&mut self) {
-        let retain = 0.95;
+        self.fast.decay(FAST_DECAY_HZ);
+        self.slow.decay(SLOW_DECAY_HZ);
+    }
+
+    fn success_rate(&self) -> Normalized {
+        let fast = self.fast.success_rate().as_f64();
+        let slow = self.slow.success_rate().as_f64();
+        Normalized::new((fast * FAST_BIAS) + (slow * (1.0 - FAST_BIAS))).unwrap_or(Normalized::ONE)
+    }
+
+    fn latency_ms(&self) -> u16 {
+        let fast = self.fast.latency_ms() as f64;
+        let slow = self.slow.latency_ms() as f64;
+        ((fast * FAST_BIAS) + (slow * (1.0 - FAST_BIAS))) as u16
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct Frame {
+    total_latency_ms: f64,
+    success_count: f64,
+    failure_count: f64,
+}
+
+impl Frame {
+    fn decay(&mut self, rate_hz: f64) {
+        debug_assert!((0.0 < rate_hz) && (rate_hz < 1.0));
+        let retain = 1.0 - rate_hz;
         self.total_latency_ms *= retain;
         self.success_count *= retain;
         self.failure_count *= retain;
