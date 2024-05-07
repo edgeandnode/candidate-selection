@@ -31,7 +31,7 @@ impl Performance {
     }
 
     pub fn decay(&mut self) {
-        let retain = 0.995;
+        let retain = 0.95;
         self.total_latency_ms *= retain;
         self.success_count *= retain;
         self.failure_count *= retain;

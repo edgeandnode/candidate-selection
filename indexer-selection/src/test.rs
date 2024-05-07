@@ -257,8 +257,12 @@ fn perf_decay() {
     // let s3 = simulate(120, true, 200).as_f64();
 
     println!("{s0:.4}");
-    for _ in 0..16 {
-        let s = simulate(2, false, 10).as_f64();
+    for _ in 0..10 {
+        let s = simulate(1, false, 10).as_f64();
+        println!("{s:.4}");
+    }
+    for _ in 0..10 {
+        let s = simulate(1, true, 200).as_f64();
         println!("{s:.4}");
     }
 
