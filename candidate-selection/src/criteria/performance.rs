@@ -7,14 +7,14 @@ use std::fmt::Debug;
 #[derive(Clone, Copy, Debug)]
 pub struct ExpectedPerformance {
     pub success_rate: Normalized,
-    pub latency_success_ms: u32,
-    pub latency_failure_ms: u32,
+    pub latency_success_ms: u16,
+    pub latency_failure_ms: u16,
 }
 
 impl ExpectedPerformance {
-    pub fn latency_ms(&self) -> u32 {
+    pub fn latency_ms(&self) -> u16 {
         let p = self.success_rate.as_f64();
-        ((p * self.latency_success_ms as f64) + ((1.0 - p) * self.latency_failure_ms as f64)) as u32
+        ((p * self.latency_success_ms as f64) + ((1.0 - p) * self.latency_failure_ms as f64)) as u16
     }
 }
 
@@ -72,8 +72,8 @@ impl Performance {
     pub fn expected_performance(&self) -> ExpectedPerformance {
         ExpectedPerformance {
             success_rate: self.success_rate(),
-            latency_success_ms: *self.latency_success() as u32,
-            latency_failure_ms: *self.latency_failure() as u32,
+            latency_success_ms: *self.latency_success() as u16,
+            latency_failure_ms: *self.latency_failure() as u16,
         }
     }
 
@@ -180,7 +180,7 @@ mod test {
         assert_within(result[1].as_f64(), 0.6666, 1e-4);
         assert_within(result[2].as_f64(), 0.0028, 1e-4);
 
-        let latencies: ArrayVec<u32, 3> = candidates
+        let latencies: ArrayVec<u16, 3> = candidates
             .iter()
             .map(|c| c.expected_performance().latency_ms())
             .collect();
