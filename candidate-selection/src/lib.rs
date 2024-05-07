@@ -1,4 +1,3 @@
-pub mod criteria;
 pub mod num;
 #[cfg(test)]
 mod test;

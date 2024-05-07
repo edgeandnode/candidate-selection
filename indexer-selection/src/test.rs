@@ -13,8 +13,7 @@ fn candidate_should_use_url_display_for_debug() {
         url: expected_url.parse().expect("valid url"),
         perf: ExpectedPerformance {
             success_rate: Normalized::ZERO,
-            latency_success_ms: 0,
-            latency_failure_ms: 0,
+            latency_ms: 0,
         },
         fee: Normalized::ZERO,
         seconds_behind: 0,
@@ -54,10 +53,10 @@ prop_compose! {
 
         let mut performance = Performance::default();
         for _ in 0..avg_success_rate_percent {
-            performance.feedback(true, avg_latency_ms as u32);
+            performance.feedback(true, avg_latency_ms as u16);
         }
         for _ in avg_success_rate_percent..100 {
-            performance.feedback(false, avg_latency_ms as u32);
+            performance.feedback(false, avg_latency_ms as u16);
         }
 
         Candidate {
@@ -117,8 +116,7 @@ fn sensitivity_seconds_behind() {
             url: "https://example.com".parse().unwrap(),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
-                latency_success_ms: 0,
-                latency_failure_ms: 0,
+                latency_ms: 0,
             },
             fee: Normalized::ZERO,
             seconds_behind: 86400,
@@ -133,8 +131,7 @@ fn sensitivity_seconds_behind() {
             url: "https://example.com".parse().unwrap(),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.5).unwrap(),
-                latency_success_ms: 1000,
-                latency_failure_ms: 1000,
+                latency_ms: 1000,
             },
             fee: Normalized::ONE,
             seconds_behind: 120,
@@ -175,8 +172,7 @@ fn multi_selection_preference() {
             url: "https://example.com/".parse().unwrap(),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
-                latency_success_ms: 93,
-                latency_failure_ms: 0,
+                latency_ms: 93,
             },
             fee: Normalized::ZERO,
             seconds_behind: 0,
@@ -191,8 +187,7 @@ fn multi_selection_preference() {
             url: "https://example.com/".parse().unwrap(),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
-                latency_success_ms: 0,
-                latency_failure_ms: 0,
+                latency_ms: 0,
             },
             fee: Normalized::ZERO,
             seconds_behind: 0,
@@ -207,8 +202,7 @@ fn multi_selection_preference() {
             url: "https://example.com/".parse().unwrap(),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
-                latency_success_ms: 224,
-                latency_failure_ms: 0,
+                latency_ms: 224,
             },
             fee: Normalized::ZERO,
             seconds_behind: 0,
@@ -228,4 +222,48 @@ fn multi_selection_preference() {
     let selected: ArrayVec<&Candidate, 3> = crate::select(&candidates);
     println!("{:#?}", selected);
     assert_eq!(3, selected.len(), "all indexers selected");
+}
+
+#[test]
+fn perf_decay() {
+    let mut perf = Performance::default();
+    let mut candidate = Candidate {
+        indexer: hex!("0000000000000000000000000000000000000000").into(),
+        deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000").into(),
+        url: "https://example.com".parse().unwrap(),
+        perf: perf.expected_performance(),
+        fee: Normalized::ZERO,
+        seconds_behind: 0,
+        slashable_grt: 1_000_000,
+        versions_behind: 0,
+        zero_allocation: false,
+    };
+
+    let mut simulate = |seconds, success, latency_ms| {
+        let feedback_hz = 20;
+        for _ in 0..seconds {
+            for _ in 0..feedback_hz {
+                perf.feedback(success, latency_ms);
+            }
+            perf.decay();
+        }
+        candidate.perf = perf.expected_performance();
+        candidate.score()
+    };
+
+    let s0 = simulate(120, true, 200).as_f64();
+    // let s1 = simulate(2, false, 10).as_f64();
+    // let s2 = simulate(2, true, 200).as_f64();
+    // let s3 = simulate(120, true, 200).as_f64();
+
+    println!("{s0:.4}");
+    for _ in 0..16 {
+        let s = simulate(2, false, 10).as_f64();
+        println!("{s:.4}");
+    }
+
+    // println!("{s0:.4}, {s1:.4}, {s2:.4}, {s3:.4}");
+    // assert_within(s1, s0 * 0.20, 0.05); // fast response
+    // assert_within(s2, s0 * 0.30, 0.10); // slower recovery
+    // assert_within(s3, s0 * 1.00, 0.01); // recovery
 }
