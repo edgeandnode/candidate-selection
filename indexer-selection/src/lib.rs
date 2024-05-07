@@ -79,7 +79,7 @@ impl candidate_selection::Candidate for Candidate {
             .zip(&p)
             .map(|(x, p)| x.recip() * p.as_f64())
             .sum::<f64>()
-            .recip() as u32;
+            .recip() as u16;
         let seconds_behind = candidates.iter().map(|c| c.seconds_behind).max().unwrap();
         let slashable_grt = candidates.iter().map(|c| c.slashable_grt).min().unwrap();
         let versions_behind = candidates.iter().map(|c| c.versions_behind).max().unwrap();
@@ -132,8 +132,8 @@ fn score_zero_allocation(zero_allocation: bool) -> Normalized {
 }
 
 /// https://www.desmos.com/calculator/v2vrfktlpl
-pub fn score_latency(latency_ms: u32) -> Normalized {
-    let s = |x: u32| 1.0 + E.powf(((x as f64) - 400.0) / 300.0);
+pub fn score_latency(latency_ms: u16) -> Normalized {
+    let s = |x: u16| 1.0 + E.powf(((x as f64) - 400.0) / 300.0);
     Normalized::new(s(0) / s(latency_ms)).unwrap()
 }
 
