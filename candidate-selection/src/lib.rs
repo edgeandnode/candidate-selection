@@ -51,15 +51,16 @@ where
             .filter(|c| selected.iter().all(|s| s.id() != c.id()))
             .map(|c| (c, marginal_score(current_score, &selected, c)))
             .max_by_key(|(c, marginal_score)| marginal_score / c.fee().as_f64().max(0.01))
-            .filter(|(c, marginal_score)| {
+            .filter(|(_c, marginal_score)| {
                 if *marginal_score.as_ref() <= 0.0 {
                     return false;
                 }
                 if current_score == Normalized::ZERO {
                     return true;
                 }
-                let max_score = 0.5 * *(marginal_score / current_score.as_f64());
-                c.fee().as_f64() <= max_score
+                // let max_score = 0.5 * *(marginal_score / current_score.as_f64());
+                // c.fee().as_f64() <= max_score
+                true
             });
         match selection {
             Some((selection, _)) => {
