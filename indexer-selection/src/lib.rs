@@ -1,7 +1,10 @@
-use candidate_selection::criteria::performance::expected_value_probabilities;
-pub use candidate_selection::criteria::performance::{ExpectedPerformance, Performance};
+mod performance;
+#[cfg(test)]
+mod test;
+
 pub use candidate_selection::{ArrayVec, Normalized};
 use custom_debug::CustomDebug;
+pub use performance::*;
 use std::{
     collections::hash_map::DefaultHasher,
     f64::consts::E,
@@ -10,9 +13,6 @@ use std::{
 };
 use thegraph_core::types::{alloy_primitives::Address, DeploymentId};
 use url::Url;
-
-#[cfg(test)]
-mod test;
 
 #[derive(CustomDebug)]
 pub struct Candidate {
@@ -51,7 +51,7 @@ impl candidate_selection::Candidate for Candidate {
     fn score(&self) -> Normalized {
         [
             score_success_rate(self.perf.success_rate),
-            score_latency(self.perf.latency_ms()),
+            score_latency(self.perf.latency_ms),
             score_seconds_behind(self.seconds_behind),
             score_slashable_grt(self.slashable_grt),
             score_subgraph_versions_behind(self.versions_behind),
@@ -67,17 +67,40 @@ impl candidate_selection::Candidate for Candidate {
             return Normalized::ZERO;
         }
 
-        let perf: ArrayVec<ExpectedPerformance, LIMIT> =
-            candidates.iter().map(|c| c.perf).collect();
-        let p = expected_value_probabilities::<LIMIT>(&perf);
+        // candidate latencies
+        let ls: ArrayVec<u16, LIMIT> = candidates.iter().map(|c| c.perf.latency_ms).collect();
+        // probability of candidate responses returning to client, based on `ls`
+        let ps = {
+            let mut ps: ArrayVec<Normalized, LIMIT> =
+                candidates.iter().map(|c| c.perf.success_rate).collect();
+            let mut ls = ls.clone();
+            let mut sort = permutation::sort_unstable(&mut ls);
+            sort.apply_slice_in_place(&mut ls);
+            sort.apply_slice_in_place(&mut ps);
+            let pf: ArrayVec<f64, LIMIT> = ps
+                .iter()
+                .map(|p| 1.0 - p.as_f64())
+                .scan(1.0, |s, x| {
+                    *s *= x;
+                    Some(*s)
+                })
+                .collect();
+            let mut ps: ArrayVec<f64, LIMIT> = std::iter::once(&1.0)
+                .chain(&pf)
+                .take(LIMIT)
+                .zip(&ps)
+                .map(|(&p, &s)| p * s.as_f64())
+                .collect();
+            sort.inverse().apply_slice_in_place(&mut ps);
+            ps
+        };
 
-        let success_rate =
-            Normalized::new(p.iter().map(|p| p.as_f64()).sum()).unwrap_or(Normalized::ONE);
+        let success_rate = Normalized::new(ps.iter().sum()).unwrap_or(Normalized::ONE);
         let latency = candidates
             .iter()
-            .map(|c| c.perf.latency_ms() as f64)
-            .zip(&p)
-            .map(|(x, p)| x.recip() * p.as_f64())
+            .map(|c| c.perf.latency_ms as f64)
+            .zip(&ps)
+            .map(|(x, p)| x.recip() * p)
             .sum::<f64>()
             .recip() as u16;
         let seconds_behind = candidates.iter().map(|c| c.seconds_behind).max().unwrap();

@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 candidate-selection = { path = "../candidate-selection" }
 custom_debug = "0.6.1"
+permutation = "0.4.1"
 thegraph-core = "0.3.2"
 url = "2.5.0"
 
