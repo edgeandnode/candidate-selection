@@ -1062,11 +1062,10 @@ checksum = "6c8640c5d730cb13ebd907d8d04b52f55ac9a2eec55b440c8892f40d56c76c1d"
 
 [[package]]
 name = "num-bigint"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "608e7659b5c3d7cba262d894801b9ec9d00de989e8a82bd4bef91d08da45cdc0"
+checksum = "c165a9ab64cf766f73521c0dd2cfdff64f488b8f0b3e621face3462d3db536d7"
 dependencies = [
- "autocfg",
  "num-integer",
  "num-traits",
 ]
@@ -1820,9 +1819,9 @@ dependencies = [
 
 [[package]]
 name = "thegraph-core"
-version = "0.4.0"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b4a90422724ef5e056689c0b3df49c3859eb0a63b54b2996d5442015d3747a5"
+checksum = "b0f179034f9427c1238d3024f771ac1b728562c27491f219b9abd831855d5b7e"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",

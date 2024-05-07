@@ -82,8 +82,9 @@ impl Performance {
         // This results in decay pulling success rate upward.
         successful_responses += 1.0;
         let failed_responses: f64 = self.latency_failure.map(|f| f.response_count).sum();
-        Normalized::new(successful_responses / (successful_responses + failed_responses).max(1.0))
-            .unwrap()
+        let success_rate = successful_responses / (successful_responses + failed_responses);
+        // Limit an individual indexer's success rate to 99%.
+        Normalized::new(success_rate.min(0.99)).unwrap()
     }
 
     fn latency_success(&self) -> NotNan<f64> {

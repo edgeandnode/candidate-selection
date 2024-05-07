@@ -1,16 +1,15 @@
-use std::collections::hash_map::DefaultHasher;
-use std::f64::consts::E;
-use std::fmt::Display;
-use std::hash::{Hash as _, Hasher as _};
-
-use custom_debug::CustomDebug;
-use thegraph_core::types::alloy_primitives::Address;
-use thegraph_core::types::DeploymentId;
-use url::Url;
-
 use candidate_selection::criteria::performance::expected_value_probabilities;
 pub use candidate_selection::criteria::performance::{ExpectedPerformance, Performance};
 pub use candidate_selection::{ArrayVec, Normalized};
+use custom_debug::CustomDebug;
+use std::{
+    collections::hash_map::DefaultHasher,
+    f64::consts::E,
+    fmt::Display,
+    hash::{Hash as _, Hasher as _},
+};
+use thegraph_core::types::{alloy_primitives::Address, DeploymentId};
+use url::Url;
 
 #[cfg(test)]
 mod test;
@@ -23,6 +22,7 @@ pub struct Candidate {
     pub url: Url,
     pub perf: ExpectedPerformance,
     pub fee: Normalized,
+    /// seconds behind chain head
     pub seconds_behind: u32,
     pub slashable_grt: u64,
     /// subgraph versions behind latest deployment
