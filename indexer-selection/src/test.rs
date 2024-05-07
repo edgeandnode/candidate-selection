@@ -252,22 +252,12 @@ fn perf_decay() {
     };
 
     let s0 = simulate(120, true, 200).as_f64();
-    // let s1 = simulate(2, false, 10).as_f64();
-    // let s2 = simulate(2, true, 200).as_f64();
-    // let s3 = simulate(120, true, 200).as_f64();
+    let s1 = simulate(2, false, 10).as_f64();
+    let s2 = simulate(8, false, 10).as_f64();
+    let s3 = simulate(120, true, 200).as_f64();
 
-    println!("{s0:.4}");
-    for _ in 0..10 {
-        let s = simulate(1, false, 10).as_f64();
-        println!("{s:.4}");
-    }
-    for _ in 0..10 {
-        let s = simulate(1, true, 200).as_f64();
-        println!("{s:.4}");
-    }
-
-    // println!("{s0:.4}, {s1:.4}, {s2:.4}, {s3:.4}");
-    // assert_within(s1, s0 * 0.20, 0.05); // fast response
-    // assert_within(s2, s0 * 0.30, 0.10); // slower recovery
-    // assert_within(s3, s0 * 1.00, 0.01); // recovery
+    println!("{s0:.4} {s1:.4} {s2:.4} {s3:.4}");
+    assert!(s1 < (s0 * 0.8));
+    assert!(s2 < (s0 * 0.1));
+    assert!(s3 > (s0 * 0.5));
 }
