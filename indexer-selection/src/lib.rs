@@ -106,7 +106,7 @@ impl candidate_selection::Candidate for Candidate {
         let seconds_behind = candidates.iter().map(|c| c.seconds_behind).max().unwrap();
         let slashable_grt = candidates.iter().map(|c| c.slashable_grt).min().unwrap();
         let versions_behind = candidates.iter().map(|c| c.versions_behind).max().unwrap();
-        let zero_allocation = candidates.iter().any(|c| c.zero_allocation);
+        let zero_allocation = candidates.iter().all(|c| c.zero_allocation);
 
         [
             score_success_rate(success_rate),

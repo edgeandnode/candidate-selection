@@ -225,6 +225,68 @@ fn multi_selection_preference() {
 }
 
 #[test]
+fn low_volume_response() {
+    let candidates = [
+        Candidate {
+            indexer: hex!("0000000000000000000000000000000000000000").into(),
+            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
+                .into(),
+            url: "https://example.com/".parse().unwrap(),
+            perf: ExpectedPerformance {
+                success_rate: Normalized::new(0.99).unwrap(),
+                latency_ms: 0,
+            },
+            fee: Normalized::ZERO,
+            seconds_behind: 0,
+            slashable_grt: 100000,
+            versions_behind: 0,
+            zero_allocation: false,
+        },
+        Candidate {
+            indexer: hex!("0000000000000000000000000000000000000001").into(),
+            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
+                .into(),
+            url: "https://example.com/".parse().unwrap(),
+            perf: ExpectedPerformance {
+                success_rate: Normalized::new(0.99).unwrap(),
+                latency_ms: 0,
+            },
+            fee: Normalized::ZERO,
+            seconds_behind: 0,
+            slashable_grt: 100000,
+            versions_behind: 0,
+            zero_allocation: false,
+        },
+        Candidate {
+            indexer: hex!("0000000000000000000000000000000000000002").into(),
+            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
+                .into(),
+            url: "https://example.com/".parse().unwrap(),
+            perf: ExpectedPerformance {
+                success_rate: Normalized::new(0.99).unwrap(),
+                latency_ms: 0,
+            },
+            fee: Normalized::ZERO,
+            seconds_behind: 0,
+            slashable_grt: 100000,
+            versions_behind: 0,
+            zero_allocation: true,
+        },
+    ];
+
+    for c in &candidates {
+        println!("{} {:?}", c.indexer, c.score());
+    }
+    let combined_score =
+        Candidate::score_many::<3>(&candidates.iter().collect::<ArrayVec<&Candidate, 3>>());
+    assert!(candidates.iter().all(|c| c.score() < combined_score));
+
+    let selected: ArrayVec<&Candidate, 3> = crate::select(&candidates);
+    println!("{:#?}", selected);
+    assert_eq!(3, selected.len(), "all indexers selected");
+}
+
+#[test]
 fn perf_decay() {
     let mut perf = Performance::default();
     let mut candidate = Candidate {

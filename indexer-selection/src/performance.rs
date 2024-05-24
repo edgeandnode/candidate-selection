@@ -39,7 +39,7 @@ impl Performance {
         let slow = self.slow.success_rate();
         let success_rate = (fast * FAST_BIAS) + (slow * (1.0 - FAST_BIAS));
         // limit an individual indexer's success rate to 99%
-        Normalized::new(success_rate.min(0.99)).unwrap()
+        Normalized::new(success_rate * 0.99).unwrap()
     }
 
     fn latency_ms(&self) -> u16 {
