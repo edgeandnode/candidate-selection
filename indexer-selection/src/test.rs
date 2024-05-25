@@ -163,6 +163,62 @@ fn sensitivity_seconds_behind() {
 }
 
 #[test]
+fn sensitivity_seconds_behind_vs_latency() {
+    let candidates = [
+        Candidate {
+            indexer: hex!("0000000000000000000000000000000000000000").into(),
+            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
+                .into(),
+            url: "https://example.com".parse().unwrap(),
+            perf: ExpectedPerformance {
+                success_rate: Normalized::new(0.99).unwrap(),
+                latency_ms: 0,
+            },
+            fee: Normalized::ZERO,
+            seconds_behind: 35_000_000,
+            slashable_grt: 1_600_000,
+            versions_behind: 0,
+            zero_allocation: false,
+        },
+        Candidate {
+            indexer: hex!("0000000000000000000000000000000000000001").into(),
+            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
+                .into(),
+            url: "https://example.com".parse().unwrap(),
+            perf: ExpectedPerformance {
+                success_rate: Normalized::new(0.99).unwrap(),
+                latency_ms: 10_000,
+            },
+            fee: Normalized::ZERO,
+            seconds_behind: 120,
+            slashable_grt: 100_000,
+            versions_behind: 0,
+            zero_allocation: true,
+        },
+    ];
+
+    println!(
+        "score {} {:?}",
+        candidates[0].indexer,
+        candidates[0].score(),
+    );
+    println!(
+        "score {} {:?}",
+        candidates[1].indexer,
+        candidates[1].score(),
+    );
+    assert!(candidates[0].score() <= candidates[1].score());
+
+    let selections: ArrayVec<&Candidate, 3> = crate::select(&candidates);
+    assert_eq!(1, selections.len(), "select exatly one candidate");
+    assert_eq!(
+        Some(candidates[1].indexer),
+        selections.first().map(|s| s.indexer),
+        "select candidate closer to chain head",
+    );
+}
+
+#[test]
 fn multi_selection_preference() {
     let candidates = [
         Candidate {

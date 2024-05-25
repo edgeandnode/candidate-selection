@@ -157,11 +157,11 @@ fn score_zero_allocation(zero_allocation: bool) -> Normalized {
 /// https://www.desmos.com/calculator/v2vrfktlpl
 pub fn score_latency(latency_ms: u16) -> Normalized {
     let s = |x: u16| 1.0 + E.powf(((x as f64) - 400.0) / 300.0);
-    Normalized::new(s(0) / s(latency_ms)).unwrap()
+    // Since high latency becomes bad success rate via timeouts, latency scores should have a floor.
+    Normalized::clamp(s(0) / s(latency_ms), 0.001, 1.0).unwrap()
 }
 
 /// https://www.desmos.com/calculator/df2keku3ad
 fn score_success_rate(success_rate: Normalized) -> Normalized {
-    let min_score = 1e-8;
-    Normalized::new(success_rate.as_f64().powi(7).max(min_score)).unwrap()
+    Normalized::clamp(success_rate.as_f64().powi(7), 1e-8, 1.0).unwrap()
 }

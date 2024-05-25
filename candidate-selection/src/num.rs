@@ -16,6 +16,10 @@ impl Normalized {
         Some(Self(value))
     }
 
+    pub fn clamp(value: f64, min: f64, max: f64) -> Option<Self> {
+        Self::new(value.clamp(min, max))
+    }
+
     pub fn as_inner(&self) -> NotNan<f64> {
         self.0
     }
