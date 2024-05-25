@@ -150,7 +150,7 @@ fn score_slashable_grt(slashable_grt: u64) -> Normalized {
 /// Allocations of zero indicate that an indexer wants lower selection priority.
 fn score_zero_allocation(zero_allocation: bool) -> Normalized {
     zero_allocation
-        .then(|| Normalized::new(0.8).unwrap())
+        .then(|| Normalized::new(0.9).unwrap())
         .unwrap_or(Normalized::ONE)
 }
 
