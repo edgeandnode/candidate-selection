@@ -1,30 +1,11 @@
 use std::ops::RangeInclusive;
 
-use candidate_selection::{num::assert_within, Candidate as _};
+use alloy_primitives::{hex, Address};
 use proptest::{prop_assert, prop_compose, proptest};
-use thegraph_core::types::alloy_primitives::{hex, FixedBytes};
+
+use candidate_selection::{num::assert_within, Candidate as _};
 
 use crate::*;
-
-#[test]
-fn candidate_should_use_url_display_for_debug() {
-    let expected_url = "https://example.com/candidate/test/url";
-    let candidate = Candidate {
-        indexer: Default::default(),
-        deployment: FixedBytes::default().into(),
-        url: expected_url.parse().expect("valid url"),
-        perf: ExpectedPerformance {
-            success_rate: Normalized::ZERO,
-            latency_ms: 0,
-        },
-        fee: Normalized::ZERO,
-        seconds_behind: 0,
-        slashable_grt: 0,
-        versions_behind: 0,
-        zero_allocation: false,
-    };
-    assert!(format!("{candidate:?}").contains(expected_url));
-}
 
 mod limits {
     use super::*;
@@ -49,22 +30,21 @@ prop_compose! {
         zero_allocation: bool,
         avg_latency_ms: u16,
         avg_success_rate_percent in 0..=100_u8,
-    ) -> Candidate {
+    ) -> Candidate<Address, ()> {
         let mut deployment_bytes = [0; 32];
         deployment_bytes[0] = versions_behind;
 
         let mut performance = Performance::default();
         for _ in 0..avg_success_rate_percent {
-            performance.feedback(true, avg_latency_ms as u16);
+            performance.feedback(true, avg_latency_ms);
         }
         for _ in avg_success_rate_percent..100 {
-            performance.feedback(false, avg_latency_ms as u16);
+            performance.feedback(false, avg_latency_ms);
         }
 
         Candidate {
-            indexer: Default::default(),
-            deployment: deployment_bytes.into(),
-            url: "https://example.com".parse().unwrap(),
+            id: Default::default(),
+            data: (),
             perf: performance.expected_performance(),
             fee,
             seconds_behind: seconds_behind as u32,
@@ -77,11 +57,11 @@ prop_compose! {
 prop_compose! {
     fn candidates(range: RangeInclusive<usize>)(
         mut candidates in proptest::collection::vec(candidate(), range)
-    ) -> Vec<Candidate> {
+    ) -> Vec<Candidate<Address, ()>> {
         for (id, candidate) in candidates.iter_mut().enumerate() {
             let mut bytes = [0; 20];
             bytes[0] = id as u8;
-            candidate.indexer = bytes.into();
+            candidate.id = bytes.into();
         }
         candidates
     }
@@ -90,11 +70,11 @@ prop_compose! {
 proptest! {
     #[test]
     fn select(candidates in candidates(1..=5)) {
-        println!("scores: {:#?}", candidates.iter().map(|c| (c.indexer, c.score())).collect::<Vec<_>>());
-        let selections: ArrayVec<&Candidate, 3> = crate::select(&candidates);
-        println!("selections: {:#?}", selections.iter().map(|c| c.indexer).collect::<Vec<_>>());
+        println!("scores: {:#?}", candidates.iter().map(|c| (c.id, c.score())).collect::<Vec<_>>());
+        let selections: ArrayVec<&Candidate<Address, ()>, 3> = crate::select(&candidates);
+        println!("selections: {:#?}", selections.iter().map(|c| c.id).collect::<Vec<_>>());
 
-        let valid_candidate = |c: &Candidate| -> bool {
+        let valid_candidate = |c: &Candidate<Address, ()>| -> bool {
             c.score() != Normalized::ZERO
         };
         let valid_selections = candidates.iter().filter(|c| valid_candidate(c)).count();
@@ -112,10 +92,8 @@ proptest! {
 fn sensitivity_seconds_behind() {
     let candidates = [
         Candidate {
-            indexer: hex!("0000000000000000000000000000000000000000").into(),
-            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
-                .into(),
-            url: "https://example.com".parse().unwrap(),
+            id: hex!("0000000000000000000000000000000000000000").into(),
+            data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
                 latency_ms: 0,
@@ -127,10 +105,8 @@ fn sensitivity_seconds_behind() {
             zero_allocation: false,
         },
         Candidate {
-            indexer: hex!("0000000000000000000000000000000000000001").into(),
-            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
-                .into(),
-            url: "https://example.com".parse().unwrap(),
+            id: hex!("0000000000000000000000000000000000000001").into(),
+            data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.5).unwrap(),
                 latency_ms: 1000,
@@ -143,23 +119,15 @@ fn sensitivity_seconds_behind() {
         },
     ];
 
-    println!(
-        "score {} {:?}",
-        candidates[0].indexer,
-        candidates[0].score(),
-    );
-    println!(
-        "score {} {:?}",
-        candidates[1].indexer,
-        candidates[1].score(),
-    );
+    println!("score {} {:?}", candidates[0].id, candidates[0].score(),);
+    println!("score {} {:?}", candidates[1].id, candidates[1].score(),);
     assert!(candidates[0].score() <= candidates[1].score());
 
-    let selections: ArrayVec<&Candidate, 3> = crate::select(&candidates);
-    assert_eq!(1, selections.len(), "select exatly one candidate");
+    let selections: ArrayVec<&Candidate<Address, ()>, 3> = crate::select(&candidates);
+    assert_eq!(1, selections.len(), "select exactly one candidate");
     assert_eq!(
-        Some(candidates[1].indexer),
-        selections.first().map(|s| s.indexer),
+        Some(candidates[1].id),
+        selections.first().map(|s| s.id),
         "select candidate closer to chain head",
     );
 }
@@ -168,10 +136,8 @@ fn sensitivity_seconds_behind() {
 fn sensitivity_seconds_behind_vs_latency() {
     let candidates = [
         Candidate {
-            indexer: hex!("0000000000000000000000000000000000000000").into(),
-            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
-                .into(),
-            url: "https://example.com".parse().unwrap(),
+            id: hex!("0000000000000000000000000000000000000000").into(),
+            data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
                 latency_ms: 0,
@@ -183,10 +149,8 @@ fn sensitivity_seconds_behind_vs_latency() {
             zero_allocation: false,
         },
         Candidate {
-            indexer: hex!("0000000000000000000000000000000000000001").into(),
-            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
-                .into(),
-            url: "https://example.com".parse().unwrap(),
+            id: hex!("0000000000000000000000000000000000000001").into(),
+            data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
                 latency_ms: 10_000,
@@ -199,23 +163,15 @@ fn sensitivity_seconds_behind_vs_latency() {
         },
     ];
 
-    println!(
-        "score {} {:?}",
-        candidates[0].indexer,
-        candidates[0].score(),
-    );
-    println!(
-        "score {} {:?}",
-        candidates[1].indexer,
-        candidates[1].score(),
-    );
+    println!("score {} {:?}", candidates[0].id, candidates[0].score(),);
+    println!("score {} {:?}", candidates[1].id, candidates[1].score(),);
     assert!(candidates[0].score() <= candidates[1].score());
 
-    let selections: ArrayVec<&Candidate, 3> = crate::select(&candidates);
-    assert_eq!(1, selections.len(), "select exatly one candidate");
+    let selections: ArrayVec<&Candidate<Address, ()>, 3> = crate::select(&candidates);
+    assert_eq!(1, selections.len(), "select exactly one candidate");
     assert_eq!(
-        Some(candidates[1].indexer),
-        selections.first().map(|s| s.indexer),
+        Some(candidates[1].id),
+        selections.first().map(|s| s.id),
         "select candidate closer to chain head",
     );
 }
@@ -224,10 +180,8 @@ fn sensitivity_seconds_behind_vs_latency() {
 fn multi_selection_preference() {
     let candidates = [
         Candidate {
-            indexer: hex!("0000000000000000000000000000000000000000").into(),
-            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
-                .into(),
-            url: "https://example.com/".parse().unwrap(),
+            id: hex!("0000000000000000000000000000000000000000").into(),
+            data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
                 latency_ms: 93,
@@ -239,10 +193,8 @@ fn multi_selection_preference() {
             zero_allocation: false,
         },
         Candidate {
-            indexer: hex!("0000000000000000000000000000000000000001").into(),
-            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
-                .into(),
-            url: "https://example.com/".parse().unwrap(),
+            id: hex!("0000000000000000000000000000000000000001").into(),
+            data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
                 latency_ms: 0,
@@ -254,10 +206,8 @@ fn multi_selection_preference() {
             zero_allocation: false,
         },
         Candidate {
-            indexer: hex!("0000000000000000000000000000000000000002").into(),
-            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
-                .into(),
-            url: "https://example.com/".parse().unwrap(),
+            id: hex!("0000000000000000000000000000000000000002").into(),
+            data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
                 latency_ms: 224,
@@ -271,13 +221,16 @@ fn multi_selection_preference() {
     ];
 
     for c in &candidates {
-        println!("{} {:?}", c.indexer, c.score());
+        println!("{} {:?}", c.id, c.score());
     }
-    let combined_score =
-        Candidate::score_many::<3>(&candidates.iter().collect::<ArrayVec<&Candidate, 3>>());
+    let combined_score = Candidate::score_many::<3>(
+        &candidates
+            .iter()
+            .collect::<ArrayVec<&Candidate<Address, ()>, 3>>(),
+    );
     assert!(candidates.iter().all(|c| c.score() < combined_score));
 
-    let selected: ArrayVec<&Candidate, 3> = crate::select(&candidates);
+    let selected: ArrayVec<&Candidate<Address, ()>, 3> = crate::select(&candidates);
     println!("{:#?}", selected);
     assert_eq!(3, selected.len(), "all indexers selected");
 }
@@ -286,10 +239,8 @@ fn multi_selection_preference() {
 fn low_volume_response() {
     let candidates = [
         Candidate {
-            indexer: hex!("0000000000000000000000000000000000000000").into(),
-            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
-                .into(),
-            url: "https://example.com/".parse().unwrap(),
+            id: hex!("0000000000000000000000000000000000000000").into(),
+            data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
                 latency_ms: 0,
@@ -301,10 +252,8 @@ fn low_volume_response() {
             zero_allocation: false,
         },
         Candidate {
-            indexer: hex!("0000000000000000000000000000000000000001").into(),
-            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
-                .into(),
-            url: "https://example.com/".parse().unwrap(),
+            id: hex!("0000000000000000000000000000000000000001").into(),
+            data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
                 latency_ms: 0,
@@ -316,10 +265,8 @@ fn low_volume_response() {
             zero_allocation: false,
         },
         Candidate {
-            indexer: hex!("0000000000000000000000000000000000000002").into(),
-            deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000")
-                .into(),
-            url: "https://example.com/".parse().unwrap(),
+            id: hex!("0000000000000000000000000000000000000002").into(),
+            data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
                 latency_ms: 0,
@@ -333,13 +280,16 @@ fn low_volume_response() {
     ];
 
     for c in &candidates {
-        println!("{} {:?}", c.indexer, c.score());
+        println!("{} {:?}", c.id, c.score());
     }
-    let combined_score =
-        Candidate::score_many::<3>(&candidates.iter().collect::<ArrayVec<&Candidate, 3>>());
+    let combined_score = Candidate::score_many::<3>(
+        &candidates
+            .iter()
+            .collect::<ArrayVec<&Candidate<Address, ()>, 3>>(),
+    );
     assert!(candidates.iter().all(|c| c.score() < combined_score));
 
-    let selected: ArrayVec<&Candidate, 3> = crate::select(&candidates);
+    let selected: ArrayVec<&Candidate<Address, ()>, 3> = crate::select(&candidates);
     println!("{:#?}", selected);
     assert_eq!(3, selected.len(), "all indexers selected");
 }
@@ -348,9 +298,8 @@ fn low_volume_response() {
 fn perf_decay() {
     let mut perf = Performance::default();
     let mut candidate = Candidate {
-        indexer: hex!("0000000000000000000000000000000000000000").into(),
-        deployment: hex!("0000000000000000000000000000000000000000000000000000000000000000").into(),
-        url: "https://example.com".parse().unwrap(),
+        id: hex!("0000000000000000000000000000000000000000"),
+        data: (),
         perf: perf.expected_performance(),
         fee: Normalized::ZERO,
         seconds_behind: 0,

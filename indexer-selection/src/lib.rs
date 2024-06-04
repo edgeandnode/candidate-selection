@@ -1,26 +1,22 @@
+use std::{collections::hash_map::DefaultHasher, f64::consts::E, hash::Hasher as _};
+
+pub use candidate_selection::{ArrayVec, Normalized};
+pub use performance::*;
+
 mod performance;
 #[cfg(test)]
 mod test;
 
-use std::{
-    collections::hash_map::DefaultHasher,
-    f64::consts::E,
-    fmt::Display,
-    hash::{Hash as _, Hasher as _},
-};
+#[derive(Debug)]
+pub struct Candidate<I, D> {
+    /// The unique identifier of the candidate.
+    pub id: I,
+    /// The data associated with the candidate.
+    ///
+    /// It can be used to store additional information about the indexer that is not used for
+    /// selection.
+    pub data: D,
 
-pub use candidate_selection::{ArrayVec, Normalized};
-use custom_debug::CustomDebug;
-pub use performance::*;
-use thegraph_core::types::{alloy_primitives::Address, DeploymentId};
-use url::Url;
-
-#[derive(CustomDebug)]
-pub struct Candidate {
-    pub indexer: Address,
-    pub deployment: DeploymentId,
-    #[debug(with = Display::fmt)]
-    pub url: Url,
     pub perf: ExpectedPerformance,
     pub fee: Normalized,
     /// seconds behind chain head
@@ -31,17 +27,24 @@ pub struct Candidate {
     pub zero_allocation: bool,
 }
 
-pub fn select<const LIMIT: usize>(candidates: &[Candidate]) -> ArrayVec<&Candidate, LIMIT> {
+pub fn select<I, D, const LIMIT: usize>(
+    candidates: &[Candidate<I, D>],
+) -> ArrayVec<&Candidate<I, D>, LIMIT>
+where
+    I: std::hash::Hash,
+{
     candidate_selection::select(candidates)
 }
 
-impl candidate_selection::Candidate for Candidate {
+impl<I, D> candidate_selection::Candidate for Candidate<I, D>
+where
+    I: std::hash::Hash,
+{
     type Id = u64;
 
     fn id(&self) -> Self::Id {
         let mut hasher = DefaultHasher::new();
-        self.indexer.hash(&mut hasher);
-        self.deployment.hash(&mut hasher);
+        self.id.hash(&mut hasher);
         hasher.finish()
     }
 
