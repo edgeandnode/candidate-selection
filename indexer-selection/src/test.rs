@@ -1,9 +1,7 @@
 use std::ops::RangeInclusive;
 
-use alloy_primitives::{hex, Address};
-use proptest::{prop_assert, prop_compose, proptest};
-
 use candidate_selection::{num::assert_within, Candidate as _};
+use proptest::{prop_assert, prop_compose, proptest};
 
 use crate::*;
 
@@ -30,7 +28,7 @@ prop_compose! {
         zero_allocation: bool,
         avg_latency_ms: u16,
         avg_success_rate_percent in 0..=100_u8,
-    ) -> Candidate<Address, ()> {
+    ) -> Candidate<u64, ()> {
         let mut deployment_bytes = [0; 32];
         deployment_bytes[0] = versions_behind;
 
@@ -57,11 +55,9 @@ prop_compose! {
 prop_compose! {
     fn candidates(range: RangeInclusive<usize>)(
         mut candidates in proptest::collection::vec(candidate(), range)
-    ) -> Vec<Candidate<Address, ()>> {
+    ) -> Vec<Candidate<u64, ()>> {
         for (id, candidate) in candidates.iter_mut().enumerate() {
-            let mut bytes = [0; 20];
-            bytes[0] = id as u8;
-            candidate.id = bytes.into();
+            candidate.id = id as u64;
         }
         candidates
     }
@@ -71,10 +67,10 @@ proptest! {
     #[test]
     fn select(candidates in candidates(1..=5)) {
         println!("scores: {:#?}", candidates.iter().map(|c| (c.id, c.score())).collect::<Vec<_>>());
-        let selections: ArrayVec<&Candidate<Address, ()>, 3> = crate::select(&candidates);
+        let selections: ArrayVec<&Candidate<u64, ()>, 3> = crate::select(&candidates);
         println!("selections: {:#?}", selections.iter().map(|c| c.id).collect::<Vec<_>>());
 
-        let valid_candidate = |c: &Candidate<Address, ()>| -> bool {
+        let valid_candidate = |c: &Candidate<u64, ()>| -> bool {
             c.score() != Normalized::ZERO
         };
         let valid_selections = candidates.iter().filter(|c| valid_candidate(c)).count();
@@ -92,7 +88,7 @@ proptest! {
 fn sensitivity_seconds_behind() {
     let candidates = [
         Candidate {
-            id: hex!("0000000000000000000000000000000000000000").into(),
+            id: 0,
             data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
@@ -105,7 +101,7 @@ fn sensitivity_seconds_behind() {
             zero_allocation: false,
         },
         Candidate {
-            id: hex!("0000000000000000000000000000000000000001").into(),
+            id: 1,
             data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.5).unwrap(),
@@ -123,7 +119,7 @@ fn sensitivity_seconds_behind() {
     println!("score {} {:?}", candidates[1].id, candidates[1].score(),);
     assert!(candidates[0].score() <= candidates[1].score());
 
-    let selections: ArrayVec<&Candidate<Address, ()>, 3> = crate::select(&candidates);
+    let selections: ArrayVec<&Candidate<u64, ()>, 3> = crate::select(&candidates);
     assert_eq!(1, selections.len(), "select exactly one candidate");
     assert_eq!(
         Some(candidates[1].id),
@@ -136,7 +132,7 @@ fn sensitivity_seconds_behind() {
 fn sensitivity_seconds_behind_vs_latency() {
     let candidates = [
         Candidate {
-            id: hex!("0000000000000000000000000000000000000000").into(),
+            id: 0,
             data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
@@ -149,7 +145,7 @@ fn sensitivity_seconds_behind_vs_latency() {
             zero_allocation: false,
         },
         Candidate {
-            id: hex!("0000000000000000000000000000000000000001").into(),
+            id: 1,
             data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
@@ -167,7 +163,7 @@ fn sensitivity_seconds_behind_vs_latency() {
     println!("score {} {:?}", candidates[1].id, candidates[1].score(),);
     assert!(candidates[0].score() <= candidates[1].score());
 
-    let selections: ArrayVec<&Candidate<Address, ()>, 3> = crate::select(&candidates);
+    let selections: ArrayVec<&Candidate<u64, ()>, 3> = crate::select(&candidates);
     assert_eq!(1, selections.len(), "select exactly one candidate");
     assert_eq!(
         Some(candidates[1].id),
@@ -180,7 +176,7 @@ fn sensitivity_seconds_behind_vs_latency() {
 fn multi_selection_preference() {
     let candidates = [
         Candidate {
-            id: hex!("0000000000000000000000000000000000000000").into(),
+            id: 0,
             data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
@@ -193,7 +189,7 @@ fn multi_selection_preference() {
             zero_allocation: false,
         },
         Candidate {
-            id: hex!("0000000000000000000000000000000000000001").into(),
+            id: 1,
             data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
@@ -206,7 +202,7 @@ fn multi_selection_preference() {
             zero_allocation: false,
         },
         Candidate {
-            id: hex!("0000000000000000000000000000000000000002").into(),
+            id: 2,
             data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
@@ -226,11 +222,11 @@ fn multi_selection_preference() {
     let combined_score = Candidate::score_many::<3>(
         &candidates
             .iter()
-            .collect::<ArrayVec<&Candidate<Address, ()>, 3>>(),
+            .collect::<ArrayVec<&Candidate<u64, ()>, 3>>(),
     );
     assert!(candidates.iter().all(|c| c.score() < combined_score));
 
-    let selected: ArrayVec<&Candidate<Address, ()>, 3> = crate::select(&candidates);
+    let selected: ArrayVec<&Candidate<u64, ()>, 3> = crate::select(&candidates);
     println!("{:#?}", selected);
     assert_eq!(3, selected.len(), "all indexers selected");
 }
@@ -239,7 +235,7 @@ fn multi_selection_preference() {
 fn low_volume_response() {
     let candidates = [
         Candidate {
-            id: hex!("0000000000000000000000000000000000000000").into(),
+            id: 0,
             data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
@@ -252,7 +248,7 @@ fn low_volume_response() {
             zero_allocation: false,
         },
         Candidate {
-            id: hex!("0000000000000000000000000000000000000001").into(),
+            id: 1,
             data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
@@ -265,7 +261,7 @@ fn low_volume_response() {
             zero_allocation: false,
         },
         Candidate {
-            id: hex!("0000000000000000000000000000000000000002").into(),
+            id: 2,
             data: (),
             perf: ExpectedPerformance {
                 success_rate: Normalized::new(0.99).unwrap(),
@@ -285,11 +281,11 @@ fn low_volume_response() {
     let combined_score = Candidate::score_many::<3>(
         &candidates
             .iter()
-            .collect::<ArrayVec<&Candidate<Address, ()>, 3>>(),
+            .collect::<ArrayVec<&Candidate<u64, ()>, 3>>(),
     );
     assert!(candidates.iter().all(|c| c.score() < combined_score));
 
-    let selected: ArrayVec<&Candidate<Address, ()>, 3> = crate::select(&candidates);
+    let selected: ArrayVec<&Candidate<u64, ()>, 3> = crate::select(&candidates);
     println!("{:#?}", selected);
     assert_eq!(3, selected.len(), "all indexers selected");
 }
@@ -298,7 +294,7 @@ fn low_volume_response() {
 fn perf_decay() {
     let mut perf = Performance::default();
     let mut candidate = Candidate {
-        id: hex!("0000000000000000000000000000000000000000"),
+        id: 0,
         data: (),
         perf: perf.expected_performance(),
         fee: Normalized::ZERO,

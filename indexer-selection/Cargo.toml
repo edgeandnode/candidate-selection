@@ -8,5 +8,4 @@ candidate-selection = { path = "../candidate-selection" }
 permutation = "0.4.1"
 
 [dev-dependencies]
-alloy-primitives = "0.7"
 proptest = "1.4.0"
