@@ -2,8 +2,7 @@ name: ci
 on:
   pull_request:
   push:
-    branches:
-      - "main"
+    branches: [ main ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -26,16 +25,30 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          components: rustfmt, clippy
-          profile: minimal
-          override: true
+          components: clippy
 
-      - name: Cache Cargo build files
+      - name: Cache rust build files
         uses: Leafwing-Studios/cargo-cache@c7e8aa40ae2c975774d3bd766beb92927cfd7771 # v1
 
-      - run: cargo check
-      - run: cargo fmt --all -- --check
-      - run: cargo clippy -- -D warnings
+      - name: check (release)
+        run: cargo check --workspace --all-targets --all-features --release
 
-      - name: Unit tests
-        run: cargo test --lib
+      - name: clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings --force-warn deprecated --force-warn dead-code
+
+      - name: unit-tests
+        run: cargo test --all-features --lib
+
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly
+          components: rustfmt
+
+      - run: cargo +nightly fmt --all -- --check
