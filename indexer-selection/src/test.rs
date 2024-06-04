@@ -1,8 +1,10 @@
-use crate::*;
+use std::ops::RangeInclusive;
+
 use candidate_selection::{num::assert_within, Candidate as _};
 use proptest::{prop_assert, prop_compose, proptest};
-use std::ops::RangeInclusive;
 use thegraph_core::types::alloy_primitives::{hex, FixedBytes};
+
+use crate::*;
 
 #[test]
 fn candidate_should_use_url_display_for_debug() {

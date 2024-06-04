@@ -1,5 +1,6 @@
-use crate::{select, ArrayVec, Candidate, Normalized};
 use proptest::{prelude::prop, prop_assert_eq, prop_compose, proptest};
+
+use crate::{select, ArrayVec, Candidate, Normalized};
 
 #[derive(Debug)]
 struct TestCandidate {

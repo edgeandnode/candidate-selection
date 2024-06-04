@@ -2,15 +2,16 @@ mod performance;
 #[cfg(test)]
 mod test;
 
-pub use candidate_selection::{ArrayVec, Normalized};
-use custom_debug::CustomDebug;
-pub use performance::*;
 use std::{
     collections::hash_map::DefaultHasher,
     f64::consts::E,
     fmt::Display,
     hash::{Hash as _, Hasher as _},
 };
+
+pub use candidate_selection::{ArrayVec, Normalized};
+use custom_debug::CustomDebug;
+pub use performance::*;
 use thegraph_core::types::{alloy_primitives::Address, DeploymentId};
 use url::Url;
 

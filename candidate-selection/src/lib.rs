@@ -2,9 +2,10 @@ pub mod num;
 #[cfg(test)]
 mod test;
 
-pub use crate::num::Normalized;
 pub use arrayvec::ArrayVec;
 use ordered_float::NotNan;
+
+pub use crate::num::Normalized;
 
 pub trait Candidate {
     type Id: Eq + Ord;
