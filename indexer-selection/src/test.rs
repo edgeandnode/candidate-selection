@@ -47,7 +47,6 @@ prop_compose! {
             fee,
             seconds_behind: seconds_behind as u32,
             slashable_grt: slashable_grt as u64,
-            versions_behind,
             zero_allocation,
         }
     }
@@ -97,7 +96,6 @@ fn sensitivity_seconds_behind() {
             fee: Normalized::ZERO,
             seconds_behind: 86400,
             slashable_grt: 1_000_000,
-            versions_behind: 0,
             zero_allocation: false,
         },
         Candidate {
@@ -110,7 +108,6 @@ fn sensitivity_seconds_behind() {
             fee: Normalized::ONE,
             seconds_behind: 120,
             slashable_grt: 100_000,
-            versions_behind: 0,
             zero_allocation: false,
         },
     ];
@@ -141,7 +138,6 @@ fn sensitivity_seconds_behind_vs_latency() {
             fee: Normalized::ZERO,
             seconds_behind: 35_000_000,
             slashable_grt: 1_600_000,
-            versions_behind: 0,
             zero_allocation: false,
         },
         Candidate {
@@ -154,7 +150,6 @@ fn sensitivity_seconds_behind_vs_latency() {
             fee: Normalized::ZERO,
             seconds_behind: 120,
             slashable_grt: 100_000,
-            versions_behind: 0,
             zero_allocation: true,
         },
     ];
@@ -185,7 +180,6 @@ fn multi_selection_preference() {
             fee: Normalized::ZERO,
             seconds_behind: 0,
             slashable_grt: 9445169,
-            versions_behind: 0,
             zero_allocation: false,
         },
         Candidate {
@@ -198,7 +192,6 @@ fn multi_selection_preference() {
             fee: Normalized::ZERO,
             seconds_behind: 0,
             slashable_grt: 1330801,
-            versions_behind: 0,
             zero_allocation: false,
         },
         Candidate {
@@ -211,7 +204,6 @@ fn multi_selection_preference() {
             fee: Normalized::ZERO,
             seconds_behind: 0,
             slashable_grt: 2675210,
-            versions_behind: 0,
             zero_allocation: false,
         },
     ];
@@ -244,7 +236,6 @@ fn low_volume_response() {
             fee: Normalized::ZERO,
             seconds_behind: 0,
             slashable_grt: 100000,
-            versions_behind: 0,
             zero_allocation: false,
         },
         Candidate {
@@ -257,7 +248,6 @@ fn low_volume_response() {
             fee: Normalized::ZERO,
             seconds_behind: 0,
             slashable_grt: 100000,
-            versions_behind: 0,
             zero_allocation: false,
         },
         Candidate {
@@ -270,7 +260,6 @@ fn low_volume_response() {
             fee: Normalized::ZERO,
             seconds_behind: 0,
             slashable_grt: 100000,
-            versions_behind: 0,
             zero_allocation: true,
         },
     ];
@@ -300,7 +289,6 @@ fn perf_decay() {
         fee: Normalized::ZERO,
         seconds_behind: 0,
         slashable_grt: 1_000_000,
-        versions_behind: 0,
         zero_allocation: false,
     };
 

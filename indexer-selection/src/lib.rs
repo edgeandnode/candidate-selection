@@ -22,8 +22,6 @@ pub struct Candidate<I, D> {
     /// seconds behind chain head
     pub seconds_behind: u32,
     pub slashable_grt: u64,
-    /// subgraph versions behind latest deployment
-    pub versions_behind: u8,
     pub zero_allocation: bool,
 }
 
@@ -58,7 +56,6 @@ where
             score_latency(self.perf.latency_ms),
             score_seconds_behind(self.seconds_behind),
             score_slashable_grt(self.slashable_grt),
-            score_subgraph_versions_behind(self.versions_behind),
             score_zero_allocation(self.zero_allocation),
         ]
         .into_iter()
@@ -109,7 +106,6 @@ where
             .recip() as u16;
         let seconds_behind = candidates.iter().map(|c| c.seconds_behind).max().unwrap();
         let slashable_grt = candidates.iter().map(|c| c.slashable_grt).min().unwrap();
-        let versions_behind = candidates.iter().map(|c| c.versions_behind).max().unwrap();
         let zero_allocation = candidates.iter().all(|c| c.zero_allocation);
 
         [
@@ -117,7 +113,6 @@ where
             score_latency(latency),
             score_seconds_behind(seconds_behind),
             score_slashable_grt(slashable_grt),
-            score_subgraph_versions_behind(versions_behind),
             score_zero_allocation(zero_allocation),
         ]
         .into_iter()
@@ -127,11 +122,6 @@ where
 
 // When picking curves to use consider the following reference:
 // https://en.wikipedia.org/wiki/Logistic_function
-
-/// Avoid serving deployments behind latest version, unless newer versions have poor indexer support.
-fn score_subgraph_versions_behind(versions_behind: u8) -> Normalized {
-    Normalized::new(0.25_f64.powi(versions_behind as i32)).unwrap()
-}
 
 /// https://www.desmos.com/calculator/gzmp7rbiai
 fn score_seconds_behind(seconds_behind: u32) -> Normalized {
