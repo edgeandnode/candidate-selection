@@ -123,11 +123,11 @@ where
 // When picking curves to use consider the following reference:
 // https://en.wikipedia.org/wiki/Logistic_function
 
-/// https://www.desmos.com/calculator/gzmp7rbiai
+/// https://www.desmos.com/calculator/jdogbfxw2j
 fn score_seconds_behind(seconds_behind: u32) -> Normalized {
-    let b: f64 = 1e-6;
-    let l: f64 = 1.6;
-    let k: f64 = 0.017;
+    let b: f64 = 1e-16;
+    let l: f64 = 1.532;
+    let k: f64 = 0.021;
     let x_0: i64 = 30;
     let u = b + (l / (1.0 + E.powf(k * (seconds_behind as i64 - x_0) as f64)));
     Normalized::new(u).unwrap()
