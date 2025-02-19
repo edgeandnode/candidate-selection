@@ -51,7 +51,9 @@ where
             .iter()
             .filter(|c| selected.iter().all(|s| s.id() != c.id()))
             .map(|c| (c, marginal_score(current_score, &selected, c)))
-            .max_by_key(|(c, marginal_score)| marginal_score / c.fee().as_f64().max(0.01))
+            .max_by_key(|(c, marginal_score)| {
+                marginal_score / NotNan::new(c.fee().as_f64().max(0.01)).unwrap()
+            })
             .filter(|(_, marginal_score)| *marginal_score.as_ref() > 0.0);
         match selection {
             Some((selection, _)) => {
