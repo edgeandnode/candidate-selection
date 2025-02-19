@@ -22,7 +22,6 @@ pub struct Candidate<I, D> {
     /// seconds behind chain head
     pub seconds_behind: u32,
     pub slashable_grt: u64,
-    pub zero_allocation: bool,
 }
 
 pub fn select<I, D, const LIMIT: usize>(
@@ -56,7 +55,6 @@ where
             score_latency(self.perf.latency_ms),
             score_seconds_behind(self.seconds_behind),
             score_slashable_grt(self.slashable_grt),
-            score_zero_allocation(self.zero_allocation),
         ]
         .into_iter()
         .product()
@@ -106,14 +104,12 @@ where
             .recip() as u16;
         let seconds_behind = candidates.iter().map(|c| c.seconds_behind).max().unwrap();
         let slashable_grt = candidates.iter().map(|c| c.slashable_grt).min().unwrap();
-        let zero_allocation = candidates.iter().all(|c| c.zero_allocation);
 
         [
             score_success_rate(success_rate),
             score_latency(latency),
             score_seconds_behind(seconds_behind),
             score_slashable_grt(slashable_grt),
-            score_zero_allocation(zero_allocation),
         ]
         .into_iter()
         .product()
@@ -139,13 +135,6 @@ fn score_slashable_grt(slashable_grt: u64) -> Normalized {
     // Currently setting a minimum score of ~0.8 at the minimum stake requirement of 100,000 GRT.
     let a = 1.6e-5;
     Normalized::new(1.0 - E.powf(-a * x)).unwrap()
-}
-
-/// Allocations of zero indicate that an indexer wants lower selection priority.
-fn score_zero_allocation(zero_allocation: bool) -> Normalized {
-    zero_allocation
-        .then(|| Normalized::new(0.9).unwrap())
-        .unwrap_or(Normalized::ONE)
 }
 
 /// https://www.desmos.com/calculator/v2vrfktlpl
