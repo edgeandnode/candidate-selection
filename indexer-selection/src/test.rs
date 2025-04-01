@@ -25,7 +25,6 @@ prop_compose! {
         versions_behind in 0..=3_u8,
         seconds_behind in 0..=7500_u16,
         slashable_grt: u32,
-        zero_allocation: bool,
         avg_latency_ms: u16,
         avg_success_rate_percent in 0..=100_u8,
     ) -> Candidate<u64, ()> {
@@ -47,7 +46,6 @@ prop_compose! {
             fee,
             seconds_behind: seconds_behind as u32,
             slashable_grt: slashable_grt as u64,
-            zero_allocation,
         }
     }
 }
@@ -96,7 +94,6 @@ fn sensitivity_seconds_behind() {
             fee: Normalized::ZERO,
             seconds_behind: 86400,
             slashable_grt: 1_000_000,
-            zero_allocation: false,
         },
         Candidate {
             id: 1,
@@ -108,7 +105,6 @@ fn sensitivity_seconds_behind() {
             fee: Normalized::ONE,
             seconds_behind: 120,
             slashable_grt: 100_000,
-            zero_allocation: false,
         },
     ];
 
@@ -138,7 +134,6 @@ fn sensitivity_seconds_behind_vs_latency() {
             fee: Normalized::ZERO,
             seconds_behind: 35_000_000,
             slashable_grt: 1_600_000,
-            zero_allocation: false,
         },
         Candidate {
             id: 1,
@@ -150,7 +145,6 @@ fn sensitivity_seconds_behind_vs_latency() {
             fee: Normalized::ZERO,
             seconds_behind: 120,
             slashable_grt: 100_000,
-            zero_allocation: true,
         },
     ];
 
@@ -180,7 +174,6 @@ fn multi_selection_preference() {
             fee: Normalized::ZERO,
             seconds_behind: 0,
             slashable_grt: 9445169,
-            zero_allocation: false,
         },
         Candidate {
             id: 1,
@@ -192,7 +185,6 @@ fn multi_selection_preference() {
             fee: Normalized::ZERO,
             seconds_behind: 0,
             slashable_grt: 1330801,
-            zero_allocation: false,
         },
         Candidate {
             id: 2,
@@ -204,7 +196,6 @@ fn multi_selection_preference() {
             fee: Normalized::ZERO,
             seconds_behind: 0,
             slashable_grt: 2675210,
-            zero_allocation: false,
         },
     ];
 
@@ -236,7 +227,6 @@ fn low_volume_response() {
             fee: Normalized::ZERO,
             seconds_behind: 0,
             slashable_grt: 100000,
-            zero_allocation: false,
         },
         Candidate {
             id: 1,
@@ -248,7 +238,6 @@ fn low_volume_response() {
             fee: Normalized::ZERO,
             seconds_behind: 0,
             slashable_grt: 100000,
-            zero_allocation: false,
         },
         Candidate {
             id: 2,
@@ -260,7 +249,6 @@ fn low_volume_response() {
             fee: Normalized::ZERO,
             seconds_behind: 0,
             slashable_grt: 100000,
-            zero_allocation: true,
         },
     ];
 
@@ -289,7 +277,6 @@ fn perf_decay() {
         fee: Normalized::ZERO,
         seconds_behind: 0,
         slashable_grt: 1_000_000,
-        zero_allocation: false,
     };
 
     let mut simulate = |seconds, success, latency_ms| {
