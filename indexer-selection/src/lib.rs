@@ -33,6 +33,16 @@ where
     candidate_selection::select(candidates)
 }
 
+pub fn score<I, D, const LIMIT: usize>(candidates: &[&Candidate<I, D>]) -> Normalized
+where
+    I: std::hash::Hash,
+{
+    if candidates.len() == 1 {
+        return candidate_selection::Candidate::score(candidates[0]);
+    }
+    candidate_selection::Candidate::score_many::<LIMIT>(candidates)
+}
+
 impl<I, D> candidate_selection::Candidate for Candidate<I, D>
 where
     I: std::hash::Hash,
